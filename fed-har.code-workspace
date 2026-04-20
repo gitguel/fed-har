@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+		"jupyter.kernelSpecFindPreference": {},
+		"jupyter.defaultKernel": "Python (fed-har)"
+	}
+}
