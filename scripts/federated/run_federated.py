@@ -48,9 +48,9 @@ COLS = [
 KEY = ["encoder", "scenario", "seed", "round", "target"]
 
 
-def load_cache() -> pd.DataFrame:
-    if CACHE.exists():
-        df = pd.read_csv(CACHE)
+def load_cache(path: Path = CACHE) -> pd.DataFrame:
+    if path.exists():
+        df = pd.read_csv(path)
         for c in COLS:
             if c not in df.columns:
                 df[c] = pd.NA
@@ -71,6 +71,18 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--rounds", type=int, default=50, help="Rodadas de FedAvg.")
     ap.add_argument("--local-epochs", type=int, default=1, help="Épocas locais por cliente/rodada.")
     ap.add_argument("--num-clients", type=int, default=NUM_CLIENTS)
+    ap.add_argument(
+        "--out",
+        type=str,
+        default=None,
+        help=(
+            "CSV de saída. Se omitido, usa o cache compartilhado "
+            "results/federated_eval.csv. Para rodar vários runs em paralelo "
+            "(ver run_all.py --max-parallel), passe um CSV parcial próprio "
+            "(ex.: results/federated_parts/<enc>_<sc>_<seed>.csv) — assim cada "
+            "run escreve seu próprio arquivo e não há corrida de escrita."
+        ),
+    )
     return ap.parse_args()
 
 
@@ -148,16 +160,17 @@ def main() -> None:
     df["seed"] = args.seed
     df = df[COLS]
 
-    CACHE.parent.mkdir(parents=True, exist_ok=True)
+    out_path = Path(args.out).resolve() if args.out else CACHE
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     cache = (
-        pd.concat([load_cache(), df], ignore_index=True)
+        pd.concat([load_cache(out_path), df], ignore_index=True)
         .drop_duplicates(subset=KEY, keep="last")
         .sort_values(KEY)
         .reset_index(drop=True)
     )
-    cache.to_csv(CACHE, index=False)
+    cache.to_csv(out_path, index=False)
     print(
-        f"\n[CACHE] {len(df)} linhas novas/atualizadas -> {CACHE} (total {len(cache)})"
+        f"\n[CACHE] {len(df)} linhas novas/atualizadas -> {out_path} (total {len(cache)})"
     )
 
 
