@@ -208,8 +208,8 @@ __marimo__/
 
 
 
-# Dataset files
-datasets/
+# Dataset files (anchored to repo root: must NOT swallow minerva/data/datasets/)
+/datasets/
 
 
 .venv/
