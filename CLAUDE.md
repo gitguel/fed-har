@@ -28,6 +28,45 @@ poetry run jupyter notebook notebooks/
 
 Notebooks add the project root to `sys.path` manually at the top — this is the expected pattern since there is no installable source package.
 
+## Estrutura do projeto (`scripts/`)
+
+Os experimentos são scripts Python diretos (não há pacote instalável). Layout:
+
+```
+scripts/
+  common.py                 # infra compartilhada: DataModule, constantes, Trainer, callbacks
+  eval_transfer.py          # avaliação transfer cross-dataset (acurácia + F1-macro) -> results/
+  supervised/               # baselines supervisionados (FEITO)
+    train_resnetse5.py  train_cnnpff.py  train_rnn.py  train_combined.py
+    RESNETSE5.md  CNNPFF.md  RNN.md  COMBINED.md
+  ssl/                      # pré-treino SSL (LFR, TF-C) — A FAZER (ver README)
+  federated/                # integração Flower / FedAvg — A FAZER (ver README)
+```
+
+**Padrão de import dos scripts** (simples e replicável): todo script executável
+coloca `scripts/` no `sys.path` e importa relativo a ele:
+
+```python
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # .../scripts
+from common import make_datamodule, DATASETS, SEEDS, run_grid   # etc.
+from supervised.train_resnetse5 import build_model              # quando precisar de um encoder
+```
+
+Rodar (sempre via tmux para scripts longos — ver seção abaixo):
+
+```bash
+poetry run python scripts/supervised/train_resnetse5.py        # treina um encoder
+poetry run python scripts/supervised/train_combined.py         # modelo generalista (todos juntos)
+poetry run python scripts/eval_transfer.py [--force]           # (re)gera results/supervised_eval_transfer.csv
+```
+
+Saídas: `checkpoints/supervised/<encoder>/<dataset>/seed<N>/{first,best,last}.ckpt`,
+logs Lightning em `logs/supervised/...`, e o cache de avaliação em
+`results/supervised_eval_transfer.csv` (colunas: `encoder,source,seed,target,test_acc,test_f1_macro`).
+O notebook `notebooks/supervised_training_runner.ipynb` apenas **lê** esse cache e plota.
+
 ## Architecture
 
 ### Data Pipeline (via `minerva-ml`)
@@ -58,3 +97,26 @@ DAGHAR `standardized_view` contains 6 sub-datasets in `datasets/DAGHAR/standardi
 `UCI`, `MotionSense`, `KuHar`, `WISDM`, `RealWorld_thigh`, `RealWorld_waist`
 
 Each has `train.csv`, `validation.csv`, and `test.csv` with 728 columns (6 channels × ~60 timesteps + metadata + label).
+
+## Executando scripts longos (treinos, benchmarks, etc.)
+
+Sempre que o usuário pedir para você **rodar um script** (treinamento, avaliação,
+benchmark, qualquer coisa que demore mais que alguns segundos), faça o seguinte:
+
+1. **Crie uma sessão `tmux` detachada** com nome descritivo (ex.: `train-resnetse5`,
+   `eval-lfr`). Use `tmux new-session -d -s <nome>` para não bloquear o shell.
+2. **Rode o script lá dentro com saída duplicada para um arquivo de log**, usando
+   `tee` (ex.: `tmux send-keys -t <nome> 'comando 2>&1 | tee logs/<nome>.log' Enter`).
+3. **Nunca rode o script em foreground** no shell direto — isso impede o usuário
+   de fazer outra coisa enquanto o experimento roda.
+4. **Informe ao usuário, ao final**:
+   - Nome da sessão tmux criada.
+   - Caminho do arquivo de log.
+   - Comandos para acompanhar:
+     - `tmux attach -t <nome>` — entrar na sessão (sair com `Ctrl+b d`, sem matar).
+     - `tail -f <caminho-do-log>` — acompanhar a saída fora do tmux.
+     - `tmux ls` — listar sessões ativas.
+     - `tmux kill-session -t <nome>` — encerrar o experimento.
+
+Padrão preferido: GPU disponível é uma NVIDIA MX570A; só rodar um experimento
+pesado por vez.
