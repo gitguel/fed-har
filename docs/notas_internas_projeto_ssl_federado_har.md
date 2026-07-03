@@ -14,7 +14,7 @@
 
 ## 2. Estado atual de implementação
 
-*Atualizado em 2026-06-08, refletindo o estado real do código e dos resultados.*
+*Atualizado em 2026-06-30, refletindo o estado real do código e dos resultados.*
 
 **Implementado e validado**
 
@@ -23,22 +23,20 @@
 - **Infraestrutura de código** (reorganizada em 2026-06-08 em subpastas por etapa): `scripts/common.py` (DataModule, constantes `DATASETS`/`SEEDS`/`NUM_CLASSES`, Trainer/callbacks), `scripts/supervised/train_{resnetse5,cnnpff,rnn,combined}.py` (+ docs `*.md`), e `scripts/eval_transfer.py` (avaliação transfer com acc+F1, incremental, `--force` recalcula tudo). Pastas `scripts/ssl/` e `scripts/federated/` criadas como placeholders (com README do plano) para o trabalho seguinte.
 - **Notebook de visualização** `notebooks/supervised_training_runner.ipynb`: agora **apenas lê** o cache `results/supervised_eval_transfer.csv` (a avaliação migrou para `scripts/eval_transfer.py`) e plota tabelas (acurácia + F1-macro), heatmaps de transfer e t-SNE. Roda end-to-end sem erros.
 - **Blocos de construção SSL disponíveis (não integrados ainda)**: a lib `minerva` vendorizada já contém implementações de **LFR, TF-C e TNC** (`minerva/models/ssl/{lfr,tfc,tnc}.py`), além de SimCLR, BYOL, Barlow Twins, CPC, etc., e o transform de FFT do TF-C (`minerva/transforms/tfc.py`). Ainda **não há script/notebook do projeto** aplicando esses métodos aos encoders.
-- **`flwr` 1.31.0 + `ray` 2.55.1 instalados** (declarados no `pyproject.toml`). Integração federada FedAvg supervisionada implementada em `scripts/federated/` (`partitions.py`, `client.py`, `server.py`, `run_federated.py`): simulação Flower, 6 clientes, avaliação centralizada por domínio (acc + F1-macro) e custo de comunicação. Saída em `results/federated_eval.csv`.
+- **Federação supervisionada FedAvg — grade completa rodada no cluster (CONCLUÍDA).** `flwr` 1.31.0 + `ray` 2.55.1 (declarados no `pyproject.toml`). Pipeline em `scripts/federated/` (`partitions.py`, `client.py`, `server.py`, `run_federated.py`, `run_all.py`): simulação Flower, 6 clientes cross-silo, avaliação centralizada por domínio (acc + F1-macro) **e custo de comunicação (uplink/downlink em bytes)**. A grade de **96 runs** (8 cenários × 3 encoders × 4 seeds, R=50 rodadas FedAvg) foi paralelizada em N GPUs e executada no cluster (8× TITAN Xp). Saída consolidada em `results/federated_eval.csv` (**29.376 linhas**, 96/96 combos com `round==50`) + parciais versionados em `results/federated_parts/`. Visualização em `notebooks/federated_avaliation.ipynb`. **Domain shift confirmado**: cenário 2 (IID global) ≈ 0,74 acc > cenário 1 (non-IID por domínio) ≈ 0,66; ablação intra-domínio (cenários 3–8) ≈ 0,45–0,53.
 
 **Pendente para o escopo oficial**
 
-- Adicionar **custo de comunicação** às métricas (quando federado). *F1-macro já coletado.*
 - Implementação/aplicação de **LFR** sobre os três encoders no pipeline do projeto (código-base existe na Minerva).
 - Implementação/aplicação de **TF-C** sobre os três encoders (código-base + FFT existem na Minerva; validar pipeline de dados).
 - Pipeline de ***linear readout*** sobre encoders pré-treinados via SSL.
-- **Integração com Flower** para federação cross-silo (6 clientes / 6 datasets / FedAvg) — fazer o *spike* técnico Minerva+Flower primeiro.
-- Pipeline de **pré-treino SSL federado** (FedAvg-SSL).
-- Coleta de **métricas de custo de comunicação** (uplink / downlink / total agregado por rodada).
-- **Baseline federado supervisionado** (parte do Experimento 2 do documento oficial). Obs.: o baseline supervisionado *centralizado* já está pronto e serve de referência.
+- Pipeline de **pré-treino SSL centralizado + finetuning federado** (Experimento 2): juntar o SSL acima com o pipeline federado já pronto.
+- Pipeline de **pré-treino SSL federado + finetuning federado** (Experimento 3, FedAvg-SSL) — componente de maior risco técnico.
 
 **Resultados já obtidos**
 
-- **Baselines supervisionados + transfer 7×6 (zero-shot), acurácia + F1-macro**: 504 medições consolidadas em `results/supervised_eval_transfer.csv`, com visualização em `notebooks/supervised_training_runner.ipynb`. Cobre, para cada encoder, a diagonal (in-domain: treino e teste no mesmo dataset) e o off-diagonal (transferência cross-dataset), além da linha do modelo generalista `combined`. Médias globais: acurácia ≈ 0,539, F1-macro ≈ 0,455 (o gap acc–F1 reflete o desbalanceamento de classes do HAR, justificando o F1-macro). Esses números são a referência centralizada contra a qual os cenários SSL e federado serão comparados.
+- **Baselines supervisionados + transfer 7×6 (zero-shot), acurácia + F1-macro**: 504 medições consolidadas em `results/supervised_eval_transfer.csv`, com visualização em `notebooks/centralized_supervised_avaliation.ipynb`. Cobre, para cada encoder, a diagonal (in-domain: treino e teste no mesmo dataset) e o off-diagonal (transferência cross-dataset), além da linha do modelo generalista `combined`. Médias globais: acurácia ≈ 0,539, F1-macro ≈ 0,455 (o gap acc–F1 reflete o desbalanceamento de classes do HAR, justificando o F1-macro). Referência centralizada contra a qual os cenários SSL e federado são comparados.
+- **Grade federada FedAvg supervisionada (96 runs, baseline federado do Exp. 2)**: `results/federated_eval.csv` (29.376 linhas). Estabelece o baseline federado supervisionado e quantifica o efeito do *domain shift* (cenário 1 vs 2) e o custo da federação sem heterogeneidade (ablação 3–8). É a referência federada contra a qual os cenários SSL serão comparados.
 
 ---
 
@@ -116,7 +114,7 @@ Log das principais decisões tomadas durante o planejamento, com justificativa. 
 
 ## 8. Checklist de andamento
 
-*Snapshot 2026-06-08. Legenda: ✅ feito e validado · 🟡 parcial/em andamento · ⬜ não iniciado.*
+*Snapshot 2026-06-30. Legenda: ✅ feito e validado · 🟡 parcial/em andamento · ⬜ não iniciado.*
 
 ### Escopo oficial (3 meses, comprometido)
 
@@ -126,16 +124,16 @@ Log das principais decisões tomadas durante o planejamento, com justificativa. 
 | Pseudo-dataset `combined` (união dos 6, 3 encoders × 4 seeds) | ✅ | 12 treinos; entra como fonte extra no transfer |
 | Avaliação transfer cross-dataset zero-shot | ✅ | 504 linhas em `results/supervised_eval_transfer.csv` via `scripts/eval_transfer.py` |
 | Métrica acurácia **+ F1-macro** na avaliação | ✅ | F1-macro adicionado em 2026-06-08 (`test_f1_macro`) |
-| Notebook de visualização dos resultados | ✅ | `supervised_training_runner.ipynb` só lê o cache; tabelas acc + F1 |
+| Notebook de visualização dos resultados | ✅ | `centralized_supervised_avaliation.ipynb` (centralizado) + `federated_avaliation.ipynb` (federado); só leem cache |
 | Reorganização do código (`scripts/{supervised,ssl,federated}/`) | ✅ | Subpastas por etapa; placeholders SSL/federado com README |
-| Custo de comunicação (uplink/downlink/total) | ⬜ | Só faz sentido no cenário federado |
+| Custo de comunicação (uplink/downlink/total) | ✅ | Coletado na grade federada (`uplink_bytes`/`downlink_bytes` por rodada) |
 | LFR aplicado aos 3 encoders | ⬜ | Código-base existe em `minerva/models/ssl/lfr.py`; falta integrar |
 | TF-C aplicado aos 3 encoders | ⬜ | Código-base + FFT na Minerva; validar pipeline de dados |
 | Pipeline de *linear readout* sobre encoders SSL | ⬜ | — |
-| *Spike* técnico Minerva + Flower | ✅ | FedAvg supervisionado em `scripts/federated/` (Flower 1.31 + Ray); avaliação por domínio + custo de comunicação |
-| Integração Flower — federação cross-silo (6 clientes, FedAvg) | ⬜ | Exp. 2 e 3 |
-| Pré-treino SSL centralizado + finetuning federado (Exp. 2) | ⬜ | Depende de SSL + Flower |
-| Baseline federado supervisionado (Exp. 2) | ⬜ | Baseline centralizado já pronto como referência |
+| *Spike* técnico Minerva + Flower | ✅ | FedAvg supervisionado em `scripts/federated/` (Flower 1.31 + Ray) |
+| Integração Flower — federação cross-silo (6 clientes, FedAvg) | ✅ | Grade de 96 runs (8 cenários × 3 enc. × 4 seeds, R=50) rodada no cluster |
+| Pré-treino SSL centralizado + finetuning federado (Exp. 2) | 🟡 | Lado federado pronto; falta a parte SSL |
+| Baseline federado supervisionado (Exp. 2) | ✅ | `results/federated_eval.csv` (29.376 linhas); domain shift confirmado |
 | Pré-treino SSL federado + finetuning federado (Exp. 3) | ⬜ | Componente de maior risco técnico |
 | Análise comparativa + redação/submissão do artigo (Mês 3) | ⬜ | — |
 
