@@ -11,13 +11,15 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from typing import Callable, Iterable, List
+from typing import Callable, Iterable, List, Optional, Union
 
 import lightning as L
+import numpy as np
 import torch
 from lightning.pytorch import seed_everything
 from lightning.pytorch.callbacks import Callback, EarlyStopping, ModelCheckpoint
 from lightning.pytorch.loggers import CSVLogger
+from torch.utils.data import DataLoader, Subset
 
 # Coloca a raiz do projeto no sys.path para que `import minerva` funcione
 # mesmo quando o script é executado de qualquer diretório.
@@ -48,6 +50,12 @@ DATASETS: List[str] = [
 # de transfer learning do notebook.
 COMBINED_DATASET_NAME = "combined"
 SEEDS: List[int] = [0, 1, 2, 3]
+
+# Regimes de dados rotulados usados no treino downstream (few-shot + total). O
+# eixo `n_shots` atravessa tanto o baseline supervisionado quanto a avaliação SSL.
+# `"full"` = 100% do train set; os demais = amostras-por-classe (estratificado).
+FULL_SHOTS = "full"
+SHOT_REGIMES: List[Union[int, str]] = [1, 10, 100, FULL_SHOTS]
 
 # Convenções padronizadas do DAGHAR para formato e rótulos das amostras.
 INPUT_CHANNELS = 6
@@ -152,6 +160,89 @@ def make_datamodule(
 
 
 # ---------------------------------------------------------------------------
+# Regimes de dados (few-shot): subamostragem estratificada do train
+# ---------------------------------------------------------------------------
+def _train_dataset(dm: MultiModalHARSeriesDataModule):
+    """Devolve o `Dataset` de treino (após `setup('fit')`).
+
+    O DataModule guarda cada split como uma tupla ``(dataset, domain_labels)``.
+    """
+    dataset = dm.datasets["train"]
+    if isinstance(dataset, tuple):
+        dataset = dataset[0]
+    return dataset
+
+
+def _dataset_labels(dataset) -> np.ndarray:
+    """Extrai o vetor de rótulos de um dataset que devolve ``(x, y)`` por índice."""
+    return np.asarray([int(dataset[i][1]) for i in range(len(dataset))])
+
+
+def few_shot_indices(
+    dataset,
+    n_per_class: Optional[Union[int, str]],
+    seed: int,
+) -> List[int]:
+    """Índices de um subconjunto com ``n_per_class`` amostras por classe.
+
+    Seleção determinística (RNG semeado) e estratificada por classe. Se uma
+    classe tiver menos que ``n_per_class`` amostras, usa todas as disponíveis.
+    ``n_per_class`` igual a ``None`` ou ``"full"`` devolve todos os índices.
+    """
+    if n_per_class is None or n_per_class == FULL_SHOTS:
+        return list(range(len(dataset)))
+
+    labels = _dataset_labels(dataset)
+    rng = np.random.default_rng(seed)
+    selected: List[int] = []
+    for cls in np.unique(labels):
+        cls_idx = np.where(labels == cls)[0]
+        rng.shuffle(cls_idx)
+        selected.extend(cls_idx[: int(n_per_class)].tolist())
+    selected.sort()
+    return selected
+
+
+def subsampled_train_loader(
+    dm: MultiModalHARSeriesDataModule,
+    n_per_class: Optional[Union[int, str]],
+    seed: int,
+    batch_size: int = BATCH_SIZE,
+    num_workers: int = 4,
+    shuffle: bool = True,
+) -> DataLoader:
+    """`DataLoader` de treino restrito a ``n_per_class`` amostras por classe.
+
+    Faz `dm.setup('fit')` se necessário, embrulha o dataset de treino num
+    `Subset` com os índices de :func:`few_shot_indices` e devolve o loader.
+    Para ``n_per_class in (None, 'full')`` usa o train completo.
+    """
+    if "train" not in dm.datasets:
+        dm.setup("fit")
+    train_ds = _train_dataset(dm)
+    idx = few_shot_indices(train_ds, n_per_class, seed)
+    subset = Subset(train_ds, idx)
+    return DataLoader(
+        subset,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        shuffle=shuffle,
+        pin_memory=True,
+    )
+
+
+def supervised_ckpt_dir(encoder: str, dataset: str, seed: int, n_shots: Union[int, str] = FULL_SHOTS) -> Path:
+    """Diretório de checkpoints de um treino supervisionado.
+
+    O regime ``"full"`` mantém o layout histórico (sem subpasta ``shots``) para
+    preservar os 84 checkpoints já existentes; os regimes few-shot ficam num
+    subdiretório ``shots<K>``.
+    """
+    base = CHECKPOINTS_ROOT / encoder / dataset / f"seed{seed}"
+    return base if n_shots == FULL_SHOTS else base / f"shots{n_shots}"
+
+
+# ---------------------------------------------------------------------------
 # Fábrica do Trainer
 # ---------------------------------------------------------------------------
 def build_callbacks(run_dir: Path) -> List[Callback]:
@@ -203,22 +294,35 @@ def run_single(
     seed: int,
     num_workers: int = 4,
     max_epochs: int = MAX_EPOCHS,
+    n_shots: Union[int, str] = FULL_SHOTS,
 ) -> None:
-    """Treina, de ponta a ponta, uma combinação (encoder, dataset, semente)."""
+    """Treina, de ponta a ponta, uma combinação (encoder, dataset, semente).
+
+    ``n_shots`` seleciona o regime de dados rotulados: ``"full"`` treina com o
+    train completo (comportamento histórico); um inteiro treina com esse número
+    de amostras por classe (few-shot). Validação e teste usam sempre 100%.
+    """
     seed_everything(seed, workers=True)
     model = model_factory()
     dm = make_datamodule(dataset, seed, num_workers=num_workers)
 
-    run_dir = CHECKPOINTS_ROOT / encoder_name / dataset / f"seed{seed}"
-    log_dir = LOGS_ROOT / encoder_name / dataset / f"seed{seed}"
+    run_dir = supervised_ckpt_dir(encoder_name, dataset, seed, n_shots)
+    shots_tag = "full" if n_shots == FULL_SHOTS else f"shots{n_shots}"
+    log_dir = LOGS_ROOT / encoder_name / dataset / f"seed{seed}" / shots_tag
     trainer = build_trainer(run_dir=run_dir, log_dir=log_dir, max_epochs=max_epochs)
 
     print(
         f"\n=== [{encoder_name}] dataset={dataset} semente={seed} "
-        f"max_epochs={max_epochs} -> checkpoints={run_dir} ===",
+        f"n_shots={n_shots} max_epochs={max_epochs} -> checkpoints={run_dir} ===",
         flush=True,
     )
-    trainer.fit(model, datamodule=dm)
+    if n_shots == FULL_SHOTS:
+        trainer.fit(model, datamodule=dm)
+    else:
+        train_loader = subsampled_train_loader(
+            dm, n_shots, seed, batch_size=BATCH_SIZE, num_workers=num_workers
+        )
+        trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=dm.val_dataloader())
     trainer.test(model, datamodule=dm, ckpt_path="best")
 
 
@@ -229,18 +333,21 @@ def run_grid(
     seeds: Iterable[int] = SEEDS,
     num_workers: int = 4,
     max_epochs: int = MAX_EPOCHS,
+    shot_regimes: Iterable[Union[int, str]] = (FULL_SHOTS,),
 ) -> None:
-    """Treina toda a grade (dataset, semente) para um único encoder."""
+    """Treina toda a grade (dataset, semente, regime) para um único encoder."""
     for dataset in datasets:
         for seed in seeds:
-            run_single(
-                model_factory=model_factory,
-                encoder_name=encoder_name,
-                dataset=dataset,
-                seed=seed,
-                num_workers=num_workers,
-                max_epochs=max_epochs,
-            )
+            for n_shots in shot_regimes:
+                run_single(
+                    model_factory=model_factory,
+                    encoder_name=encoder_name,
+                    dataset=dataset,
+                    seed=seed,
+                    num_workers=num_workers,
+                    max_epochs=max_epochs,
+                    n_shots=n_shots,
+                )
 
 
 # ---------------------------------------------------------------------------
@@ -281,4 +388,25 @@ def make_argparser(encoder_name: str) -> argparse.ArgumentParser:
         default=MAX_EPOCHS,
         help=f"Máximo de épocas por treino (padrão: {MAX_EPOCHS}).",
     )
+    parser.add_argument(
+        "--shots",
+        nargs="+",
+        default=[FULL_SHOTS],
+        help=(
+            "Regimes de dados a treinar: inteiros (amostras-por-classe), 'full' "
+            "(100%%) ou 'all' (1 10 100 full). Padrão: full."
+        ),
+    )
     return parser
+
+
+def normalize_shots(values: Iterable[Union[int, str]]) -> List[Union[int, str]]:
+    """Converte tokens de CLI (`1 10 100 full` / `all`) em regimes canônicos."""
+    values = list(values)
+    if any(str(v).lower() == "all" for v in values):
+        return list(SHOT_REGIMES)
+    out: List[Union[int, str]] = []
+    for v in values:
+        v = str(v).lower()
+        out.append(FULL_SHOTS if v == FULL_SHOTS else int(v))
+    return out

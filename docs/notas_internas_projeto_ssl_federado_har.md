@@ -127,9 +127,12 @@ Log das principais decisões tomadas durante o planejamento, com justificativa. 
 | Notebook de visualização dos resultados | ✅ | `centralized_supervised_avaliation.ipynb` (centralizado) + `federated_avaliation.ipynb` (federado); só leem cache |
 | Reorganização do código (`scripts/{supervised,ssl,federated}/`) | ✅ | Subpastas por etapa; placeholders SSL/federado com README |
 | Custo de comunicação (uplink/downlink/total) | ✅ | Coletado na grade federada (`uplink_bytes`/`downlink_bytes` por rodada) |
-| LFR aplicado aos 3 encoders | ⬜ | Código-base existe em `minerva/models/ssl/lfr.py`; falta integrar |
-| TF-C aplicado aos 3 encoders | ⬜ | Código-base + FFT na Minerva; validar pipeline de dados |
-| Pipeline de *linear readout* sobre encoders SSL | ⬜ | — |
+| LFR aplicado aos 3 encoders | ✅ | `scripts/ssl/pretrain_lfr.py` (backbone LFR; 3 enc × 7 fontes × 4 seeds = 84 backbones) |
+| TF-C aplicado aos 3 encoders | ⬜ | Código-base + FFT na Minerva; reusa `scripts/ssl/downstream_eval.py` sem mudanças |
+| Pipeline de *linear readout* sobre encoders SSL | ✅ | `scripts/ssl/downstream_eval.py` (protocolo `linear`) → `results/ssl_lfr_eval_transfer.csv` |
+| Avaliação SSL em regimes de dados (1/10/100/100% samples-per-class) | ✅ | Eixo `n_shots` compartilhado (SL e SSL); `common.few_shot_indices`/`subsampled_train_loader` |
+| Baseline supervisionado nos regimes de dados (transfer 7×6) | 🟡 | Código pronto (`--shots all` em `train_*`/`eval_transfer.py`); falta rodar a grade |
+| Notebook SSL (comparação SL vs SSL, data-efficiency) | ✅ | `notebooks/ssl_lfr_avaliation.ipynb` (só lê caches) |
 | *Spike* técnico Minerva + Flower | ✅ | FedAvg supervisionado em `scripts/federated/` (Flower 1.31 + Ray) |
 | Integração Flower — federação cross-silo (6 clientes, FedAvg) | ✅ | Grade de 96 runs (8 cenários × 3 enc. × 4 seeds, R=50) rodada no cluster |
 | Pré-treino SSL centralizado + finetuning federado (Exp. 2) | 🟡 | Lado federado pronto; falta a parte SSL |
@@ -141,7 +144,7 @@ Log das principais decisões tomadas durante o planejamento, com justificativa. 
 
 | Item | Status | Observações |
 |---|---|---|
-| *Full finetuning* como alternativa ao *linear readout* | ⬜ | Ablação clássica em papers de SSL |
+| *Full finetuning* como alternativa ao *linear readout* | ✅ | `scripts/ssl/downstream_eval.py` (protocolo `finetune`), avaliado nos 4 regimes de dados |
 | TNC como terceira técnica de SSL | ⬜ | Código-base existe em `minerva/models/ssl/tnc.py` |
 | Matriz expandida de transfer (pré-treino dataset-a-dataset, 7 exp.) | 🟡 | Transfer supervisionado zero-shot 7×6 já feito; falta versão SSL/pré-treino |
 | Mais rodadas de comunicação + varredura de hiperparâmetros | ⬜ | — |
@@ -156,3 +159,100 @@ Log das principais decisões tomadas durante o planejamento, com justificativa. 
 | Outros métodos SSL (SimCLR-TS, TS2Vec, TS-TCC, TimeMAE, PatchTST) | ⬜ |
 | Diversificação da avaliação downstream (além de HAR) | ⬜ |
 | Análise de privacidade (inversão de gradiente) | ⬜ |
+
+## 9. Validação da grade LFR v1 contra o paper de benchmark (2026-07-06)
+
+A grade LFR v1 (config oficial; 3 encoders × 7 fontes × 4 seeds × 2 protocolos
+× 4 regimes) foi comparada célula a célula com os resultados publicados pelo
+paper de referência (da Luz et al., IEEE Access 2026), usando o
+`benchmarks/scripts/performance_data.json` do repo oficial
+[H-IAAC/benchmarking-encoders-ssl-har](https://github.com/H-IAAC/benchmarking-encoders-ssl-har).
+Auditoria de hiperparâmetros: **14/14 itens idênticos** aos YAMLs/overrides
+oficiais (projetores/preditores, DPP `num_targets=6`, Adam 3e-4/wd 3e-4/betas
+(0.9, 0.99), 600 épocas sem ES, batch 64, backbones, cabeça MLP `[enc,128,6]`,
+lr 1e-4 nos dois protocolos, ES paciência 50 + best.ckpt, freeze via
+`requires_grad`). Análise completa (5 figuras):
+[artifact lfr-v1-analise-completa](https://claude.ai/code/artifact/07996207-a97d-4c02-90c4-f65d6060749f).
+
+### Nossos resultados vs paper (LFR, in-domain)
+
+Acurácia média dos 6 datasets DAGHAR, formato **nós / paper**, por
+amostras-por-classe. "Nós" = média de 4 seeds; "paper" = média reportada de
+3 seeds (a coluna 100% do paper corresponde ao spc `1000` do JSON).
+
+| Encoder | Protocolo | 1 | 10 | 100 | 100% |
+|---|---|---|---|---|---|
+| ResNet-SE-5 | full finetuning | 54.6 / 52.4 | 69.4 / 70.8 | 78.4 / 75.8 | 80.9 / 79.8 |
+| ResNet-SE-5 | freeze / linear | 38.3 / 33.8 | 39.1 / 37.1 | 60.0 / 60.2 | 71.6 / 70.7 |
+| CNN-PFF | full finetuning | 35.2 / 37.9 | 54.7 / 55.5 | 72.5 / 71.5 | 75.7 / 74.0 |
+| CNN-PFF | freeze / linear | 35.2 / 36.1 | 49.8 / 48.6 | 67.9 / 72.3 | 72.5 / 73.4 |
+| RNN | full finetuning | 41.2 / 41.6 | 58.1 / 58.7 | 69.7 / 69.2 | 73.0 / 71.3 |
+| RNN | freeze / linear | 41.8 / 38.7 | 50.4 / 50.2 | 67.9 / 66.1 | 72.6 / 72.1 |
+
+Viés por encoder×protocolo entre −1.2 e +1.8 pp; desvio absoluto médio
+(célula a célula, dataset × regime) entre 2.1 e 4.6 pp — sem discrepância
+sistemática, e dentro do desvio-padrão que o próprio paper reporta nas células
+de few-shot (até ±18 pp entre seeds).
+
+**Conclusões que replicamos do paper**: (i) LFR só ajuda de forma consistente
+a **RNN** (paper: +18.1 pp vs supervisionado @10-shot full-ft; nós: +17 pp
+in-domain em F1); (ii) ResNet-SE-5 fica ~neutro no full finetuning;
+(iii) CNN-PFF é misto; (iv) o linear readout do ResNet-SE-5 é fraco por
+natureza do método (paper: −32 pp @10-shot; nós: −20 pp) — não é bug da nossa
+implementação.
+
+**Desvios conhecidos do protocolo oficial** (não são hiperparâmetros):
+pré-treino na `standardized_view` train+val em vez da view
+`rodrigues_2024_datasets` (não balanceada, mais dado sem rótulo) — único
+desvio material; 4 seeds (0–3, afetando init + subsample) vs 3 runs com seed
+de dados fixa 42; grade de regimes {1, 10, 100, 100%} ⊂ paper
+{1, 5, 10, 25, 50, 100, 200, 100%}; nossa avaliação estende para a matriz de
+transfer 7×6 + fonte `combined` (paper é só in-domain).
+
+### Panorama do benchmark além do LFR (base p/ escolhas futuras)
+
+Δ(técnica − supervisionado) em pp de acurácia, full finetuning, média dos 6
+datasets (do `performance_data.json`; formato @10-shot / @100%):
+
+| Backbone | LFR | TF-C | TNC | DIET |
+|---|---|---|---|---|
+| ResNet-SE-5 | +1.5 / +0.3 | +0.4 / +4.2 | +0.3 / −1.3 | −2.4 / +1.2 |
+| CNN-PFF | +0.1 / −3.7 | **+21.7 / +8.4** | −1.6 / +0.3 | −2.9 / −1.0 |
+| RNN | +18.1 / +2.2 | **+28.9 / +14.6** | +1.5 / −1.8 | +3.0 / +1.8 |
+| IMU Transformer | +1.1 / +5.8 | −7.4 / +4.9 | −1.5 / −1.1 | −15.3 / −16.7 |
+| ResNet-1D | +1.4 / +3.4 | +1.8 / +7.4 | −0.9 / +0.7 | −4.0 / +3.5 |
+| TS-TCC Encoder | **+5.0 / +5.2** | +8.5 / +3.7 | +0.7 / −1.4 | −5.2 / +3.1 |
+| TS2Vec Encoder | −4.3 / +2.8 | +6.9 / +5.0 | −0.5 / +0.4 | −20.2 / +1.1 |
+
+Leituras principais: **TF-C é a técnica mais forte do benchmark** (positiva em
+quase todos os backbones @100%; TF-C + CNN-PFF é a melhor célula absoluta do
+paper: 77.0% @10-shot / 86.1% @100%); **TNC é ~neutro** e **DIET é negativo em
+few-shot** — nenhum dos dois justifica entrar no escopo; o **TS-TCC Encoder**
+é o único backbone além da RNN em que o LFR ajuda de forma consistente; o
+**TS2Vec Encoder** tem o melhor teto absoluto @100% (81–86% em todas as
+técnicas).
+
+## 10. Plano de implementação — fechamento da parte centralizada (2026-07-06)
+
+Objetivo: adicionar o **encoder TS-TCC** (`tstcc` = `HARSCnnEncoder`, dim 2304,
+o `tfc_harcnn`/`lfr_default` do benchmark) como 4º encoder em todo o pipeline
+(supervisionado, LFR, federado) e implementar o **TF-C** como 2ª técnica SSL
+nos 4 encoders. Configs oficiais já levantadas: TF-C pré-treina **100 épocas
+sem ES** (vs 600 do LFR), lr 3e-4, batch 64, `TFC_Backbone` com
+time/frequency encoders gêmeos e projeção p/ `single_encoding_size=128`;
+downstream = `SimpleSupervisedModel` com cabeça MLP `[256, 128, 6]` sobre o
+concat tempo+freq, lr 1e-4, mesmos protocolos freeze/full.
+
+| # | Etapa | Entregável | Grade a rodar |
+|---|---|---|---|
+| 0 | *Spike* TF-C (minerva `TFC_Model`/`TFC_Backbone`/`TFC_Transforms`) | perguntas de integração respondidas (FFT no forward, formato do ckpt, VRAM) | 1 combo, épocas reduzidas |
+| 1 | Encoder `tstcc` no pipeline supervisionado (`train_tstcc.py` + registro em `common.BEST_LR`, `eval_transfer.py`, `run_all_shots.py`, `train_combined.py`) | baseline SL do 4º encoder | 7 fontes × 4 seeds × 4 regimes = 112 treinos + transfer 7×6 |
+| 2 | LFR no `tstcc` (reusa `pretrain_lfr.py`/`downstream_eval.py` via `encoders.py`; validar VRAM: 60 preditores 2304² ≈ 318M params) | LFR completo nos 4 encoders | 28 pré-treinos (600 ép.) + 28 downstream |
+| 3 | TF-C nos 4 encoders (`pretrain_tfc.py` + `--method tfc` no downstream/run_all; cache `results/ssl_tfc_eval_transfer.csv`) | 2ª técnica SSL do escopo oficial | 112 pré-treinos (100 ép.) + 112 downstream |
+| 4 | `tstcc` no baseline federado (registro em `federated/client.py`) | grade federada com 4 encoders | 8 cenários × 4 seeds = 32 runs (R=50) |
+| 5 | Notebooks + validação vs paper (o `performance_data.json` cobre TF-C e o backbone TS-TCC → repetir a validação de MAE/viés da Seção 9) | notebooks atualizados, checklist, commit | — |
+
+Ordem: 0 → 1 → {2, 4 em paralelo} → 3 → 5 (o spike 0 pode rodar em paralelo
+com 1). Tudo no cluster Dl-16 (torch 2.5.1+cu118), via tmux + `run_all.py`
+de cada etapa. Antes de começar: **commitar o estado atual** (grade LFR v1 +
+notebook + Seções 9–10, além da grade federada de junho ainda não commitada).

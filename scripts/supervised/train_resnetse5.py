@@ -31,6 +31,7 @@ from common import (
     NUM_CLASSES,
     build_prediction_head,
     make_argparser,
+    normalize_shots,
     run_grid,
 )
 
@@ -73,6 +74,7 @@ def main() -> None:
         seeds=args.seed,
         num_workers=args.num_workers,
         max_epochs=args.max_epochs,
+        shot_regimes=normalize_shots(args.shots),
     )
 
 

@@ -214,3 +214,7 @@ __marimo__/
 
 .venv/
 .vscode/
+
+# artefatos pesados de treino (ficam só na máquina)
+/checkpoints/
+/logs/

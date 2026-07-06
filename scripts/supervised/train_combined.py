@@ -29,8 +29,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from common import (
     COMBINED_DATASET_NAME,
+    FULL_SHOTS,
     MAX_EPOCHS,
     SEEDS,
+    normalize_shots,
     run_grid,
 )
 
@@ -80,6 +82,12 @@ def make_argparser() -> argparse.ArgumentParser:
         default=MAX_EPOCHS,
         help=f"Máximo de épocas por treino (padrão: {MAX_EPOCHS}).",
     )
+    parser.add_argument(
+        "--shots",
+        nargs="+",
+        default=[FULL_SHOTS],
+        help="Regimes de dados: inteiros, 'full' ou 'all' (1 10 100 full). Padrão: full.",
+    )
     return parser
 
 
@@ -95,6 +103,7 @@ def main() -> None:
             seeds=args.seed,
             num_workers=args.num_workers,
             max_epochs=args.max_epochs,
+            shot_regimes=normalize_shots(args.shots),
         )
 
 

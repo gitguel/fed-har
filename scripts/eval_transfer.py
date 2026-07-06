@@ -30,12 +30,14 @@ import torch
 from sklearn.metrics import accuracy_score, f1_score
 
 from common import (
-    CHECKPOINTS_ROOT,
     COMBINED_DATASET_NAME,
     DATASETS,
+    FULL_SHOTS,
     PROJECT_ROOT,
     SEEDS,
+    SHOT_REGIMES,
     make_datamodule,
+    supervised_ckpt_dir,
 )
 from supervised.train_resnetse5 import build_model as build_resnetse5
 from supervised.train_cnnpff import build_model as build_cnnpff
@@ -55,8 +57,8 @@ TARGETS = DATASETS
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 CACHE = PROJECT_ROOT / "results" / "supervised_eval_transfer.csv"
-COLS = ["encoder", "source", "seed", "target", "test_acc", "test_f1_macro"]
-KEY = ["encoder", "source", "seed", "target"]
+COLS = ["encoder", "source", "seed", "n_shots", "target", "test_acc", "test_f1_macro"]
+KEY = ["encoder", "source", "seed", "n_shots", "target"]
 
 
 # ---------------------------------------------------------------------------
@@ -104,6 +106,10 @@ def evaluate(model: torch.nn.Module, loader) -> tuple[float, float]:
 def load_cache() -> pd.DataFrame:
     if CACHE.exists():
         df = pd.read_csv(CACHE)
+        # Back-fill: linhas antigas (sem a coluna) foram medidas com 100% dos dados.
+        if "n_shots" not in df.columns:
+            df["n_shots"] = FULL_SHOTS
+        df["n_shots"] = df["n_shots"].fillna(FULL_SHOTS).astype(str)
         for c in COLS:
             if c not in df.columns:
                 df[c] = pd.NA
@@ -124,7 +130,8 @@ def main() -> None:
     done = set()
     if not args.force and not cache.empty:
         ok = cache.dropna(subset=["test_f1_macro"])
-        done = set(zip(ok.encoder, ok.source, ok.seed.astype(int), ok.target))
+        done = set(zip(ok.encoder, ok.source, ok.seed.astype(int),
+                       ok.n_shots.astype(str), ok.target))
 
     print(f"Device: {DEVICE} | cache: {CACHE} ({len(cache)} linhas)", flush=True)
 
@@ -132,23 +139,26 @@ def main() -> None:
     for encoder in ENCODERS:
         for source in SOURCES:
             for seed in SEEDS:
-                ckpt = CHECKPOINTS_ROOT / encoder / source / f"seed{seed}" / "best.ckpt"
-                if not ckpt.exists():
-                    continue
-                todo = [t for t in TARGETS
-                        if args.force or (encoder, source, seed, t) not in done]
-                if not todo:
-                    continue
-                model = load_checkpoint(encoder, ckpt)
-                for target in todo:
-                    acc, f1 = evaluate(model, test_loader(target))
-                    new_rows.append(dict(encoder=encoder, source=source, seed=seed,
-                                         target=target, test_acc=acc, test_f1_macro=f1))
-                    print(f"[OK] {encoder} {source}->{target} seed{seed}: "
-                          f"acc={acc:.4f} f1={f1:.4f}", flush=True)
-                del model
-                if DEVICE.type == "cuda":
-                    torch.cuda.empty_cache()
+                for n_shots in SHOT_REGIMES:
+                    shots_str = str(n_shots)
+                    ckpt = supervised_ckpt_dir(encoder, source, seed, n_shots) / "best.ckpt"
+                    if not ckpt.exists():
+                        continue
+                    todo = [t for t in TARGETS
+                            if args.force or (encoder, source, seed, shots_str, t) not in done]
+                    if not todo:
+                        continue
+                    model = load_checkpoint(encoder, ckpt)
+                    for target in todo:
+                        acc, f1 = evaluate(model, test_loader(target))
+                        new_rows.append(dict(encoder=encoder, source=source, seed=seed,
+                                             n_shots=shots_str, target=target,
+                                             test_acc=acc, test_f1_macro=f1))
+                        print(f"[OK] {encoder} {source}->{target} seed{seed} "
+                              f"shots={shots_str}: acc={acc:.4f} f1={f1:.4f}", flush=True)
+                    del model
+                    if DEVICE.type == "cuda":
+                        torch.cuda.empty_cache()
 
     if not new_rows:
         print("Nada a calcular — cache já completo. Use --force para recalcular.")
