@@ -34,12 +34,18 @@ from encoders import ENCODERS  # noqa: E402
 from pretrain_lfr import SOURCES, ssl_ckpt_dir  # noqa: E402
 from downstream_eval import COLS, KEY  # noqa: E402
 
-PRETRAIN = Path(__file__).resolve().parent / "pretrain_lfr.py"
+PRETRAIN_SCRIPT = {
+    "lfr": Path(__file__).resolve().parent / "pretrain_lfr.py",
+    "tfc": Path(__file__).resolve().parent / "pretrain_tfc.py",
+}
 DOWNSTREAM = Path(__file__).resolve().parent / "downstream_eval.py"
-CACHE = PROJECT_ROOT / "results" / "ssl_lfr_eval_transfer.csv"
-PART_DIR = PROJECT_ROOT / "results" / "ssl_lfr_parts"
 LOG_DIR = PROJECT_ROOT / "logs" / "ssl_runs"
 ROWS_PER_PARTIAL = 2 * 4 * 6  # protocolos × regimes × alvos = 48
+
+# Definidos em main() a partir de --method:
+METHOD = "lfr"
+CACHE = PROJECT_ROOT / "results" / "ssl_lfr_eval_transfer.csv"
+PART_DIR = PROJECT_ROOT / "results" / "ssl_lfr_parts"
 
 
 def partial_path(encoder: str, source: str, seed: int) -> Path:
@@ -86,6 +92,8 @@ def main() -> None:
     ap.add_argument("--encoder", nargs="+", choices=ENCODERS, default=ENCODERS)
     ap.add_argument("--source", nargs="+", choices=SOURCES, default=SOURCES)
     ap.add_argument("--seed", nargs="+", type=int, default=SEEDS)
+    ap.add_argument("--method", choices=["lfr", "tfc"], default="lfr",
+                    help="Técnica SSL da grade (padrão: lfr).")
     ap.add_argument("--phase", choices=["pretrain", "downstream", "both"], default="both")
     ap.add_argument("--epochs", type=int, default=100,
                     help="Máx. de épocas do treino downstream (ES paciência 50).")
@@ -98,20 +106,26 @@ def main() -> None:
     gpus = ([int(g) for g in args.gpus.split(",") if g.strip()] if args.gpus else detect_gpus()) or [0]
     max_parallel = args.max_parallel or len(gpus)
 
+    global METHOD, CACHE, PART_DIR
+    METHOD = args.method
+    CACHE = PROJECT_ROOT / "results" / f"ssl_{METHOD}_eval_transfer.csv"
+    PART_DIR = PROJECT_ROOT / "results" / f"ssl_{METHOD}_parts"
+    pretrain_script = PRETRAIN_SCRIPT[METHOD]
+
     combos = [(e, s, seed) for e in args.encoder for s in args.source for seed in args.seed]
 
     # ── Fase 1: pré-treino ──────────────────────────────────────────────────
     if args.phase in ("pretrain", "both"):
         jobs = []
         for e, s, seed in combos:
-            if not args.force and (ssl_ckpt_dir(e, s, seed) / "backbone.ckpt").exists():
+            if not args.force and (ssl_ckpt_dir(e, s, seed, METHOD) / "backbone.ckpt").exists():
                 continue
-            argv = [sys.executable, str(PRETRAIN), "--encoder", e, "--source", s,
+            argv = [sys.executable, str(pretrain_script), "--encoder", e, "--source", s,
                     "--seed", str(seed), "--num-workers", str(args.num_workers)]
             if args.force:
                 argv.append("--force")
-            jobs.append(Job(f"pretrain_{e}_{s}_seed{seed}", argv,
-                            LOG_DIR / f"pretrain_{e}_{s}_{seed}.log"))
+            jobs.append(Job(f"pretrain_{METHOD}_{e}_{s}_seed{seed}", argv,
+                            LOG_DIR / f"pretrain_{METHOD}_{e}_{s}_{seed}.log"))
         print(f"[GRID] Fase 1 (pretrain): {len(jobs)} jobs a rodar de {len(combos)} combos.", flush=True)
         run_pool(jobs, gpus, max_parallel)
 
@@ -120,20 +134,21 @@ def main() -> None:
         PART_DIR.mkdir(parents=True, exist_ok=True)
         jobs = []
         for e, s, seed in combos:
-            if not (ssl_ckpt_dir(e, s, seed) / "backbone.ckpt").exists():
+            if not (ssl_ckpt_dir(e, s, seed, METHOD) / "backbone.ckpt").exists():
                 print(f"[GRID] SKIP downstream (sem backbone) {e}/{s}/seed{seed}", flush=True)
                 continue
             if not args.force and downstream_done(e, s, seed):
                 continue
             out = partial_path(e, s, seed)
             argv = [sys.executable, str(DOWNSTREAM), "--encoder", e, "--source", s,
-                    "--seed", str(seed), "--protocol", "both", "--shots", "all",
+                    "--seed", str(seed), "--method", METHOD,
+                    "--protocol", "both", "--shots", "all",
                     "--epochs", str(args.epochs), "--num-workers", str(args.num_workers),
                     "--out", str(out)]
             if args.force:
                 argv.append("--force")
-            jobs.append(Job(f"downstream_{e}_{s}_seed{seed}", argv,
-                            LOG_DIR / f"downstream_{e}_{s}_{seed}.log"))
+            jobs.append(Job(f"downstream_{METHOD}_{e}_{s}_seed{seed}", argv,
+                            LOG_DIR / f"downstream_{METHOD}_{e}_{s}_{seed}.log"))
         print(f"[GRID] Fase 2 (downstream): {len(jobs)} jobs a rodar de {len(combos)} combos.", flush=True)
         run_pool(jobs, gpus, max_parallel)
         consolidate()

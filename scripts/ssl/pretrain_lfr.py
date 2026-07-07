@@ -74,7 +74,8 @@ from minerva.models.ssl.lfr import LearnFromRandomnessModel  # noqa: E402
 # ---------------------------------------------------------------------------
 # Configuração (Tabela 4 do paper + YAMLs oficiais train/lfr_<enc>.yaml)
 # ---------------------------------------------------------------------------
-SSL_CKPT_ROOT = PROJECT_ROOT / "checkpoints" / "ssl" / "lfr"
+SSL_CKPT_BASE = PROJECT_ROOT / "checkpoints" / "ssl"
+SSL_CKPT_ROOT = SSL_CKPT_BASE / "lfr"
 SSL_LOGS_ROOT = LOGS_ROOT.parent / "ssl" / "lfr"  # .../logs/ssl/lfr
 SOURCES = [COMBINED_DATASET_NAME] + DATASETS
 
@@ -99,11 +100,15 @@ class PretrainDataModule(L.LightningDataModule):
     não há loop de validação.
     """
 
-    def __init__(self, source: str, seed: int, batch_size: int, num_workers: int) -> None:
+    def __init__(self, source: str, seed: int, batch_size: int, num_workers: int,
+                 drop_last: bool = False) -> None:
         super().__init__()
         self.inner = make_datamodule(source, seed, batch_size=batch_size, num_workers=num_workers)
         self.batch_size = batch_size
         self.num_workers = num_workers
+        # A NT-Xent poly do TF-C usa máscara de tamanho fixo 2×batch — o loader
+        # de pré-treino TF-C precisa de drop_last=True (o LFR não).
+        self.drop_last = drop_last
         self.dataset: Optional[ConcatDataset] = None
 
     @staticmethod
@@ -126,7 +131,7 @@ class PretrainDataModule(L.LightningDataModule):
             shuffle=True,
             num_workers=self.num_workers,
             pin_memory=True,
-            drop_last=False,
+            drop_last=self.drop_last,
         )
 
 
@@ -169,8 +174,8 @@ def build_lfr(
     )
 
 
-def ssl_ckpt_dir(encoder: str, source: str, seed: int) -> Path:
-    return SSL_CKPT_ROOT / encoder / source / f"seed{seed}"
+def ssl_ckpt_dir(encoder: str, source: str, seed: int, method: str = "lfr") -> Path:
+    return SSL_CKPT_BASE / method / encoder / source / f"seed{seed}"
 
 
 def pretrain_single(

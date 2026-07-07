@@ -1,4 +1,10 @@
-"""Avaliação downstream dos backbones SSL (LFR) — espelha `eval_transfer.py`.
+"""Avaliação downstream dos backbones SSL (LFR ou TF-C) — espelha `eval_transfer.py`.
+
+`--method {lfr,tfc}` (padrão lfr) seleciona a técnica: muda o builder do
+backbone (`build_backbone` vs `build_tfc_backbone`, enc_dim 256 no TF-C), a
+raiz dos checkpoints (`checkpoints/ssl/<method>/`) e o cache default
+(`results/ssl_<method>_eval_transfer.csv`). Cabeça, protocolos e regimes são
+idênticos nos dois métodos (YAML finetune do TF-C: MLP [256,128,6], lr 1e-4).
 
 Estágios B+C do pipeline SSL. Para cada (encoder, fonte, semente, protocolo,
 regime de dados):
@@ -67,7 +73,7 @@ from common import (  # noqa: E402
     normalize_shots,
     subsampled_train_loader,
 )
-from encoders import ENCODERS, build_backbone  # noqa: E402
+from encoders import ENCODERS, build_backbone, build_tfc_backbone  # noqa: E402
 from eval_transfer import DEVICE, evaluate, test_loader  # noqa: E402
 from pretrain_lfr import SOURCES, ssl_ckpt_dir  # noqa: E402
 
@@ -76,6 +82,13 @@ from pretrain_lfr import SOURCES, ssl_ckpt_dir  # noqa: E402
 # ---------------------------------------------------------------------------
 TARGETS = DATASETS
 PROTOCOLS = ["linear", "finetune"]
+METHODS = ["lfr", "tfc"]
+# Builder do backbone por método: LFR reusa o backbone SL puro; TF-C usa o
+# TFC_Backbone gêmeo tempo+freq (256-d). Cabeça/protocolos/regimes idênticos.
+BUILD_SSL_BACKBONE = {
+    "lfr": build_backbone,
+    "tfc": build_tfc_backbone,
+}
 CACHE = PROJECT_ROOT / "results" / "ssl_lfr_eval_transfer.csv"
 COLS = ["encoder", "source", "seed", "protocol", "n_shots",
         "target", "test_acc", "test_f1_macro"]
@@ -101,10 +114,10 @@ class Probe(nn.Module):
         return self.head(z)
 
 
-def load_probe(encoder: str, pretrain_source: str, seed: int) -> Probe:
-    """Constrói o backbone, injeta os pesos pré-treinados (LFR) e acopla a cabeça."""
-    backbone, enc_dim = build_backbone(encoder)
-    ckpt = ssl_ckpt_dir(encoder, pretrain_source, seed) / "backbone.ckpt"
+def load_probe(encoder: str, pretrain_source: str, seed: int, method: str = "lfr") -> Probe:
+    """Constrói o backbone do método, injeta os pesos pré-treinados e acopla a cabeça."""
+    backbone, enc_dim = BUILD_SSL_BACKBONE[method](encoder)
+    ckpt = ssl_ckpt_dir(encoder, pretrain_source, seed, method) / "backbone.ckpt"
     state = torch.load(ckpt, map_location="cpu")
     backbone.load_state_dict(state, strict=True)
     return Probe(backbone, enc_dim)
@@ -192,6 +205,8 @@ def main() -> None:
     parser.add_argument("--encoder", choices=ENCODERS, nargs="+", default=ENCODERS)
     parser.add_argument("--source", choices=SOURCES, nargs="+", default=SOURCES)
     parser.add_argument("--seed", type=int, nargs="+", default=SEEDS)
+    parser.add_argument("--method", choices=METHODS, default="lfr",
+                        help="Técnica SSL do backbone pré-treinado (padrão: lfr).")
     parser.add_argument("--protocol", choices=["linear", "finetune", "both"], default="both")
     parser.add_argument("--shots", nargs="+", default=["all"],
                         help="Regimes: inteiros, 'full', ou 'all' (1 10 100 full). Padrão: all.")
@@ -212,7 +227,9 @@ def main() -> None:
     if args.out:
         CACHE = Path(args.out)
     elif args.pretrain_source:
-        CACHE = PROJECT_ROOT / "results" / f"ssl_lfr_pre{args.pretrain_source}_eval_transfer.csv"
+        CACHE = PROJECT_ROOT / "results" / f"ssl_{args.method}_pre{args.pretrain_source}_eval_transfer.csv"
+    else:
+        CACHE = PROJECT_ROOT / "results" / f"ssl_{args.method}_eval_transfer.csv"
 
     protocols = PROTOCOLS if args.protocol == "both" else [args.protocol]
     shot_regimes: List[Union[int, str]] = normalize_shots(args.shots)
@@ -233,7 +250,7 @@ def main() -> None:
         for source in args.source:
             for seed in args.seed:
                 backbone_src = args.pretrain_source or source
-                ckpt = ssl_ckpt_dir(encoder, backbone_src, seed) / "backbone.ckpt"
+                ckpt = ssl_ckpt_dir(encoder, backbone_src, seed, args.method) / "backbone.ckpt"
                 if not ckpt.exists():
                     print(f"[miss] backbone ausente: {ckpt}", flush=True)
                     continue
@@ -246,7 +263,7 @@ def main() -> None:
                             continue
 
                         seed_everything(seed, workers=True)
-                        probe = load_probe(encoder, backbone_src, seed)
+                        probe = load_probe(encoder, backbone_src, seed, args.method)
                         dm = make_datamodule(source, seed, num_workers=args.num_workers)
                         loader = subsampled_train_loader(
                             dm, n_shots, seed, batch_size=BATCH_SIZE,

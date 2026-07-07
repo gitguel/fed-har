@@ -37,10 +37,13 @@ from pretrain_lfr import ssl_ckpt_dir  # noqa: E402
 from downstream_eval import COLS, KEY  # noqa: E402
 
 DOWNSTREAM = Path(__file__).resolve().parent / "downstream_eval.py"
-CACHE = PROJECT_ROOT / "results" / "ssl_lfr_comb2target_eval_transfer.csv"
-PART_DIR = PROJECT_ROOT / "results" / "ssl_lfr_comb2target_parts"
 LOG_DIR = PROJECT_ROOT / "logs" / "ssl_runs"
 ROWS_PER_PARTIAL = 2 * 4 * 6  # protocolos × regimes × alvos = 48
+
+# Definidos em main() a partir de --method:
+METHOD = "lfr"
+CACHE = PROJECT_ROOT / "results" / "ssl_lfr_comb2target_eval_transfer.csv"
+PART_DIR = PROJECT_ROOT / "results" / "ssl_lfr_comb2target_parts"
 
 
 def partial_path(encoder: str, source: str, seed: int) -> Path:
@@ -88,6 +91,8 @@ def main() -> None:
     ap.add_argument("--source", nargs="+", choices=DATASETS, default=DATASETS,
                     help="Dataset(s) do finetune (o backbone é sempre do combined).")
     ap.add_argument("--seed", nargs="+", type=int, default=SEEDS)
+    ap.add_argument("--method", choices=["lfr", "tfc"], default="lfr",
+                    help="Técnica SSL do backbone combined (padrão: lfr).")
     ap.add_argument("--epochs", type=int, default=100)
     ap.add_argument("--gpus", type=str, default=None, help="Ex.: '0,1,2,3'. Padrão: auto.")
     ap.add_argument("--max-parallel", type=int, default=None)
@@ -98,24 +103,30 @@ def main() -> None:
     gpus = ([int(g) for g in args.gpus.split(",") if g.strip()] if args.gpus else detect_gpus()) or [0]
     max_parallel = args.max_parallel or len(gpus)
 
+    global METHOD, CACHE, PART_DIR
+    METHOD = args.method
+    CACHE = PROJECT_ROOT / "results" / f"ssl_{METHOD}_comb2target_eval_transfer.csv"
+    PART_DIR = PROJECT_ROOT / "results" / f"ssl_{METHOD}_comb2target_parts"
+
     PART_DIR.mkdir(parents=True, exist_ok=True)
     jobs = []
     combos = [(e, s, seed) for e in args.encoder for s in args.source for seed in args.seed]
     for e, s, seed in combos:
-        if not (ssl_ckpt_dir(e, "combined", seed) / "backbone.ckpt").exists():
+        if not (ssl_ckpt_dir(e, "combined", seed, METHOD) / "backbone.ckpt").exists():
             print(f"[GRID] SKIP (sem backbone combined) {e}/seed{seed}", flush=True)
             continue
         if not args.force and partial_done(e, s, seed):
             continue
         argv = [sys.executable, str(DOWNSTREAM), "--encoder", e, "--source", s,
-                "--seed", str(seed), "--protocol", "both", "--shots", "all",
+                "--seed", str(seed), "--method", METHOD,
+                "--protocol", "both", "--shots", "all",
                 "--pretrain-source", "combined",
                 "--epochs", str(args.epochs), "--num-workers", str(args.num_workers),
                 "--out", str(partial_path(e, s, seed))]
         if args.force:
             argv.append("--force")
-        jobs.append(Job(f"c2t_{e}_{s}_seed{seed}", argv,
-                        LOG_DIR / f"c2t_{e}_{s}_{seed}.log"))
+        jobs.append(Job(f"c2t_{METHOD}_{e}_{s}_seed{seed}", argv,
+                        LOG_DIR / f"c2t_{METHOD}_{e}_{s}_{seed}.log"))
     print(f"[GRID] comb→target: {len(jobs)} jobs a rodar de {len(combos)} combos.", flush=True)
     run_pool(jobs, gpus, max_parallel)
     consolidate()
