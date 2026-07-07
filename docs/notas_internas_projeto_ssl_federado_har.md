@@ -256,3 +256,9 @@ Ordem: 0 → 1 → {2, 4 em paralelo} → 3 → 5 (o spike 0 pode rodar em paral
 com 1). Tudo no cluster Dl-16 (torch 2.5.1+cu118), via tmux + `run_all.py`
 de cada etapa. Antes de começar: **commitar o estado atual** (grade LFR v1 +
 notebook + Seções 9–10, além da grade federada de junho ainda não commitada).
+
+> **Plano detalhado e sequencial (2026-07-06)**: ver
+> **`docs/plano_implementacao_tstcc_tfc.md`** — 10 fases com critérios de
+> aceite (gates de validação contra o `performance_data.json` do paper),
+> comandos prontos, checklist de registro do encoder e estimativas de custo
+> ancoradas nas grades já medidas. É a versão executável desta seção.
