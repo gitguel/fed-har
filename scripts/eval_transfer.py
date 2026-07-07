@@ -42,15 +42,17 @@ from common import (
 from supervised.train_resnetse5 import build_model as build_resnetse5
 from supervised.train_cnnpff import build_model as build_cnnpff
 from supervised.train_rnn import build_model as build_rnn
+from supervised.train_tstcc import build_model as build_tstcc
 
 # ---------------------------------------------------------------------------
 # Configuração
 # ---------------------------------------------------------------------------
-ENCODERS = ["resnetse5", "cnnpff", "rnn"]
+ENCODERS = ["resnetse5", "cnnpff", "rnn", "tstcc"]
 BUILD_MODEL = {
     "resnetse5": build_resnetse5,
     "cnnpff": build_cnnpff,
     "rnn": build_rnn,
+    "tstcc": build_tstcc,
 }
 SOURCES = [COMBINED_DATASET_NAME] + DATASETS  # combined primeiro; alvos = só os 6 reais
 TARGETS = DATASETS
@@ -121,6 +123,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--force", action="store_true",
                         help="Recalcula todas as combinações, ignorando o cache.")
+    parser.add_argument("--encoder", nargs="+", choices=ENCODERS, default=ENCODERS,
+                        help="Restringe a avaliação a um subconjunto de encoders.")
     args = parser.parse_args()
 
     CACHE.parent.mkdir(parents=True, exist_ok=True)
@@ -136,7 +140,7 @@ def main() -> None:
     print(f"Device: {DEVICE} | cache: {CACHE} ({len(cache)} linhas)", flush=True)
 
     new_rows = []
-    for encoder in ENCODERS:
+    for encoder in args.encoder:
         for source in SOURCES:
             for seed in SEEDS:
                 for n_shots in SHOT_REGIMES:

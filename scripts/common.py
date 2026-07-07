@@ -77,6 +77,7 @@ BEST_LR = {
     "resnetse5": 1e-4,
     "cnnpff":    1e-4,
     "rnn":       1e-4,
+    "tstcc":     1e-4,
 }
 
 # Dimensão da camada oculta da cabeça de predição (paper, Seção V-C; Tabela 2).

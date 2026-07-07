@@ -35,7 +35,7 @@ from common import (  # noqa: E402
 from gpu_pool import Job, detect_gpus, run_pool  # noqa: E402
 
 SUP_DIR = Path(__file__).resolve().parent
-ENCODERS = ["resnetse5", "cnnpff", "rnn"]
+ENCODERS = ["resnetse5", "cnnpff", "rnn", "tstcc"]
 SOURCES = [COMBINED_DATASET_NAME] + DATASETS
 LOG_DIR = PROJECT_ROOT / "logs" / "sup_shots_runs"
 EVAL_SCRIPT = SUP_DIR.parent / "eval_transfer.py"

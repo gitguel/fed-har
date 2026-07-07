@@ -39,6 +39,7 @@ from common import (
 from supervised.train_resnetse5 import build_model as build_resnetse5
 from supervised.train_cnnpff import build_model as build_cnnpff
 from supervised.train_rnn import build_model as build_rnn
+from supervised.train_tstcc import build_model as build_tstcc
 
 # Mesma ordem/nomes de encoder dos scripts individuais, para que checkpoints e
 # logs do treino conjunto fiquem em `checkpoints/supervised/{encoder}/combined/`.
@@ -46,6 +47,7 @@ ENCODER_BUILDERS = {
     "resnetse5": build_resnetse5,
     "cnnpff": build_cnnpff,
     "rnn": build_rnn,
+    "tstcc": build_tstcc,
 }
 
 
