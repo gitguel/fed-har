@@ -173,6 +173,68 @@ sem perder o benefício — e a que custo de comunicação? Contribuições:
   (LFR/TF-C) sob *domain shift real* cross-silo, com custo de comunicação
   medido — exatamente o eixo deste artigo.
 
+### II-E. Posicionamento em relação à linha H-IAAC (DAGHAR / benchmark)
+
+*Levantamento de 2026-07-07 da produção do grupo Napoli–da Luz–Soto–Rocha–
+Boccato–Borin (H-IAAC/Unicamp), para delimitar explicitamente o que este
+trabalho adiciona. Importante para a redação: somos usuários diretos do
+dataset e do protocolo deles — a diferenciação precisa ficar inequívoca.*
+
+Produção mapeada do grupo (toda **centralizada**; nenhuma envolve federação):
+
+| Trabalho | O que fez | O que NÃO fez (e nós fazemos) |
+|---|---|---|
+| **DAGHAR** [Napoli et al., Sci Data 2024] | Recurso: 6 datasets padronizados (unidades, taxa, gravidade, rótulos, splits por usuário, janelas); baselines supervisionados de adaptação/generalização de domínio cross-dataset | Nenhum SSL; nenhuma federação; sem regimes few-shot; sem custo de comunicação |
+| **Benchmark encoders+SSL** [da Luz et al., IEEE Access 2026] | 7 backbones × 4 técnicas SSL (LFR, TF-C, TNC, DIET) + supervisionado, no DAGHAR; regimes de 1 a 100% amostras/classe; linear readout + full finetuning; checkpoints publicados (Zenodo 19301058) | Avaliação **só in-domain** (sem matriz de transferência cross-dataset); tudo centralizado; sem eixo federado; sem comunicação; acurácia como métrica principal (sem F1-macro) |
+| **CPC × corpus de pré-treino** [Rodrigues da Silva et al., BRACIS 2024] | Efeito do dataset de pré-treino no CPC para HAR (origem da view `rodrigues_2024` usada no benchmark) | Uma técnica só (CPC); centralizado; sem federação |
+| **TNC variants** [BRACIS 2024, conferir autores] | Variantes de Temporal Neighborhood Coding no HAR de smartphone | Idem: técnica única, centralizado |
+| **Mix-based DG** [ESANN 2025, conferir autores] | Generalização de domínio via métodos mix (MixStyle etc.; melhor célula: TS2Vec+MixStyle) | Mitigação por manipulação de dados, não por pré-treino; centralizado |
+| **LIME vs SHAP** [Alves et al., BRACIS 2024] | Explicabilidade em HAR | Ortogonal ao nosso eixo |
+
+Nota: o H-IAAC tem também uma linha de FL (seleção de clientes, eficiência de
+comunicação, robustez — Cerqueira, Villas, Rosário et al.), mas **disjunta**
+desta: não trata HAR sob domain shift nem SSL. Nenhum trabalho do hub conecta
+as duas linhas — é exatamente a junção que este artigo faz.
+
+**Diferenças estruturais deste trabalho:**
+
+1. **O eixo federado é inteiramente novo.** O grupo estuda domain shift e SSL
+   no regime centralizado; nós recolocamos o mesmo domain shift como
+   heterogeneidade non-IID *por construção* numa federação cross-silo
+   (1 dataset = 1 cliente) e medimos o que o FedAvg faz com ele — incluindo o
+   controle IID de volume idêntico (cenário 2) e a ablação intra-domínio
+   (cenários 3–8), um desenho experimental que não existe na linha deles.
+2. **SSL como estratégia de *inicialização* federada, não só como método
+   centralizado.** O benchmark responde "qual técnica/encoder é melhor no
+   centralizado"; nós respondemos "o pré-treino (centralizado OU federado)
+   melhora o finetuning federado sob domain shift, e a que custo?" — as duas
+   estratégias (Exp. 2 e 3) não têm análogo em nenhum paper do grupo.
+3. **Pré-treino SSL federado (FedAvg-SSL) de LFR/TF-C**: inédito também na
+   literatura de FedSSL (que usa SimCLR/BYOL de visão) — e inédito para o
+   grupo.
+4. **Matriz de transferência cross-dataset para SSL.** O benchmark é só
+   in-domain; o DAGHAR original faz cross-dataset mas só supervisionado. Nós
+   cobrimos as 7 fontes × 6 alvos zero-shot para SL, LFR e TF-C, mais o
+   desenho comb→target (que estende a pergunta do paper de CPC deles para
+   LFR/TF-C com avaliação cruzada).
+5. **Custo de comunicação como métrica de primeira classe** (uplink/downlink
+   por rodada, pré-treino + finetuning) — ausente de toda a produção mapeada.
+6. **F1-macro** ao lado da acurácia em todas as grades (o desbalanceamento do
+   HAR torna a acurácia otimista; gap médio observado ≈ 8 pp).
+7. **Continuidade metodológica como força, não fraqueza**: replicamos o
+   protocolo oficial (auditoria 14/14 hiperparâmetros; validação célula a
+   célula com viés ±2 pp / MAE 2–5 pp) antes de estender — nossos números são
+   *plug-compatible* com o benchmark publicado, o que permite ao leitor
+   comparar diretamente as duas tabelas.
+
+**Frase de posicionamento (candidata para o fim do related work):** "While
+DAGHAR established *what* domain heterogeneity looks like in smartphone HAR
+and the encoder/SSL benchmark established *which* representations help under
+label scarcity, both operate in a centralized regime. This work asks what
+happens when the same heterogeneity becomes a *federation topology* — and
+whether self-supervised pre-training, centralized or federated, buys back the
+accuracy that domain-heterogeneous FedAvg loses."
+
 ---
 
 ## III. Metodologia (~1.5–2 páginas)
@@ -440,9 +502,21 @@ temporais, mais clientes, análise de privacidade.]
     Learning for Human Activity Recognition in Smart Homes", Springer
     (10.1007/978-3-032-16995-2_15).
 
+16. B. E. Rodrigues da Silva, O. Napoli, J. Vargas, A. Rocha, L. Boccato,
+    E. Borin, "Impact of Pre-training Datasets on Human Activity Recognition
+    with Contrastive Predictive Coding", BRACIS 2024 (Springer LNCS,
+    DOI 10.1007/978-3-031-79035-5_21).
+17. [Conferir autores] "An Evaluation of Temporal Neighborhood Coding
+    Variants in Smartphone-Based Human Activity Recognition", BRACIS 2024
+    (DOI 10.1007/978-3-031-79035-5_6).
+18. [Conferir autores] "On Domain Generalization for Human Activity
+    Recognition with Mix-Based Methods", ESANN 2025
+    (esann.org/sites/default/files/proceedings/2025/ES2025-135.pdf).
+
 *Ainda por buscar na fase de redação: citação canônica de TS-TCC (Eldele et
 al., IJCAI 2021) e TS2Vec (Yue et al., AAAI 2022) se entrarem no related work;
-UCI-HAR/WISDM/etc. originais (citados via DAGHAR).*
+UCI-HAR/WISDM/etc. originais (citados via DAGHAR); autores completos das
+refs. 17–18.*
 
 ---
 
