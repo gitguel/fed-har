@@ -36,7 +36,7 @@ md(
 # Visualização da grade federada (FedAvg) — DAGHAR / HAR
 
 Análise dos resultados da **grade federada completa** rodada no cluster:
-**96 runs = 8 cenários × 3 encoders × 4 seeds**, `R = 50` rodadas de FedAvg,
+**128 runs = 8 cenários × 4 encoders × 4 seeds**, `R = 50` rodadas de FedAvg,
 avaliação **centralizada por domínio** nos 6 test sets do DAGHAR.
 
 Fonte: `results/federated_eval.csv`
@@ -119,8 +119,9 @@ code(
 # Ordem canônica dos datasets DAGHAR (importada do código para casar com os cenários 3..8).
 from common import DATASETS  # ['UCI', 'MotionSense', 'KuHar', 'WISDM', 'RealWorld_thigh', 'RealWorld_waist']
 
-ENCODERS = ["resnetse5", "cnnpff", "rnn"]
-ENCODER_LABEL = {"resnetse5": "ResNet-SE-5", "cnnpff": "CNN-PFF", "rnn": "BiGRU"}
+ENCODERS = ["resnetse5", "cnnpff", "rnn", "tstcc"]
+ENCODER_LABEL = {"resnetse5": "ResNet-SE-5", "cnnpff": "CNN-PFF", "rnn": "BiGRU",
+                 "tstcc": "TS-TCC Enc"}
 
 # Cenário 3+i -> DATASETS[i] (mesma regra de scripts/federated/partitions.py).
 SCENARIO_TO_DATASET = {3 + i: name for i, name in enumerate(DATASETS)}
@@ -145,7 +146,8 @@ C_NONIID   = "#DE8F05"  # laranja — heterogêneo (domain shift presente)
 C_IID      = "#0173B2"  # azul    — homogêneo (controle)
 C_CENTRAL  = "#029E73"  # verde   — referência centralizada (combined)
 HEATMAP_CMAP = "mako" if HAS_SNS else "viridis"
-ENCODER_COLORS = {"resnetse5": "#0173B2", "cnnpff": "#DE8F05", "rnn": "#029E73"}
+ENCODER_COLORS = {"resnetse5": "#0173B2", "cnnpff": "#DE8F05", "rnn": "#029E73",
+                  "tstcc": "#CC78BC"}
 
 print("Encoders:", ENCODERS)
 print("Cenários 3..8 ->", SCENARIO_TO_DATASET)
@@ -184,8 +186,15 @@ md(
     """
 ## 2. Cobertura e sanidade da grade
 
-Confere que os **96 runs** (8 cenários × 3 encoders × 4 seeds) chegaram à rodada
+Confere que os **128 runs** (8 cenários × 4 encoders × 4 seeds) chegaram à rodada
 final (`round == 50`), com os 6 domínios avaliados em cada rodada.
+
+**Nota de reprodutibilidade (auditoria F1, 2026-07-07):** os runs do `tstcc`
+rodaram com `seed_everything(seed)` no `run_federated.py` (semeadura completa:
+init do modelo global e shuffle local); os 96 runs dos 3 encoders anteriores
+semearam só o particionamento. Estatisticamente inócuo (a aleatoriedade extra é
+absorvida como variância entre as 4 seeds), mas os runs antigos não são
+reproduzíveis bit a bit.
 """
 )
 
@@ -195,8 +204,8 @@ LAST_ROUND = int(df["round"].max())
 combos = df.groupby(["encoder", "scenario", "seed"]).ngroups
 done = df[df["round"] == LAST_ROUND].groupby(["encoder", "scenario", "seed"]).ngroups
 print(f"Rodada final: R = {LAST_ROUND}")
-print(f"Combinações (encoder×cenário×seed): {combos} / 96")
-print(f"Combinações com round=={LAST_ROUND}: {done} / 96")
+print(f"Combinações (encoder×cenário×seed): {combos} / 128")
+print(f"Combinações com round=={LAST_ROUND}: {done} / 128")
 print(f"Domínios-alvo avaliados: {sorted(df['target'].unique())}")
 print(f"Seeds: {sorted(df['seed'].unique())}  |  Rodadas distintas: {df['round'].nunique()} (0..{LAST_ROUND})")
 
@@ -333,7 +342,7 @@ md(
     """
 ## 4. Resultados agregados — por modelo e por dataset
 
-Desempenho na **rodada final** (modelo FedAvg convergido), agregando os 3
+Desempenho na **rodada final** (modelo FedAvg convergido), agregando os 4
 encoders e/ou as 4 seeds.
 """
 )
@@ -378,7 +387,7 @@ md(
     """
 ### 4.2 Agregado por dataset (todos os modelos)
 
-Para cada domínio-alvo, agrega os **3 encoders × 4 seeds** e compara o cenário 1
+Para cada domínio-alvo, agrega os **4 encoders × 4 seeds** e compara o cenário 1
 (non-IID) com o cenário 2 (IID global), junto da referência centralizada
 `combined`.
 """
@@ -564,7 +573,7 @@ def draw_transfer(mat, title):
     fig.tight_layout(); plt.show()
 
 mat_all = federated_transfer_matrix(None, "test_acc")
-draw_transfer(mat_all, "Transfer federada 6×6 — média dos 3 encoders (acc %)")
+draw_transfer(mat_all, "Transfer federada 6×6 — média dos 4 encoders (acc %)")
 
 # Resumo diagonal vs off-diagonal
 diag = np.diag(mat_all.values)
@@ -678,8 +687,9 @@ md(
   representação aprendida num domínio não transfere bem, motivando o SSL como
   próximo passo do plano.
 - **Custo de comunicação (6):** cresce linearmente com as rodadas; os 3 encoders
-  são leves (~127K params), então o gargalo é o número de rodadas, não o tamanho
-  do modelo.
+  originais são leves (~127K–1M params), então o gargalo é o número de rodadas.
+  O `tstcc` (2304-d, ~3.3M params) é o mais pesado dos 4 e serve de contraste
+  na discussão de custo de comunicação.
 
 Próximos passos do plano: pré-treino **SSL** (LFR/TF-C) + *finetuning* federado,
 comparando contra estes baselines federados supervisionados.

@@ -102,8 +102,9 @@ from common import DATASETS, COMBINED_DATASET_NAME
 warnings.filterwarnings("ignore")
 sns.set_context("notebook")
 
-ENCODERS = ["resnetse5", "cnnpff", "rnn"]
-ENCODER_PRETTY = {"resnetse5": "ResNet-SE-5", "cnnpff": "CNN-PFF", "rnn": "RNN (BiGRU)"}
+ENCODERS = ["resnetse5", "cnnpff", "rnn", "tstcc"]
+ENCODER_PRETTY = {"resnetse5": "ResNet-SE-5", "cnnpff": "CNN-PFF", "rnn": "RNN (BiGRU)",
+                  "tstcc": "TS-TCC Enc"}
 COMBINED = COMBINED_DATASET_NAME
 COMBINED_PRETTY = "Combinado (todos)"
 TRANSFER_SOURCES = [COMBINED] + DATASETS
@@ -399,7 +400,8 @@ def _method_df(key, proto, encoder=None):
 def bars_by_scenario(metric="test_acc"):
     if ssl_df.empty or sup_df.empty:
         print("Precisa dos dois caches (SSL e SL)."); return
-    fig, axes = plt.subplots(3, 3, figsize=(13.5, 10.5), sharex=True, sharey=True)
+    fig, axes = plt.subplots(3, len(ENCODERS), figsize=(4.5 * len(ENCODERS), 10.5),
+                             sharex=True, sharey=True)
     width = 0.26
     x = np.arange(len(SHOT_ORDER))
     for r, (scen, scen_title) in enumerate(SCENARIOS):
@@ -456,7 +458,8 @@ def delta_bars_by_dataset(scenario="esp", protocol="finetune", metric="test_acc"
     \"\"\"Δ(SSL[protocol] − SL) por dataset-alvo × regime, painéis por encoder.\"\"\"
     if ssl_df.empty or sup_df.empty:
         print("Precisa dos dois caches (SSL e SL)."); return
-    fig, axes = plt.subplots(1, 3, figsize=(14, 4.4), sharey=True)
+    fig, axes = plt.subplots(1, len(ENCODERS), figsize=(4.7 * len(ENCODERS), 4.4),
+                             sharey=True)
     width = 0.2
     x = np.arange(len(DATASETS))
     for c, encoder in enumerate(ENCODERS):
@@ -505,7 +508,7 @@ code(
 def delta_transfer_heatmap(protocol="finetune", n_shots="10", metric="test_acc", vmax=20):
     if ssl_df.empty or sup_df.empty:
         print("Precisa dos dois caches (SSL e SL)."); return
-    fig, axes = plt.subplots(1, 3, figsize=(15.5, 4.6))
+    fig, axes = plt.subplots(1, len(ENCODERS), figsize=(5.2 * len(ENCODERS), 4.6))
     mask = np.eye(len(DATASETS), dtype=bool)
     for c, encoder in enumerate(ENCODERS):
         ax = axes[c]
@@ -517,7 +520,7 @@ def delta_transfer_heatmap(protocol="finetune", n_shots="10", metric="test_acc",
         delta = (_mat(ssl_df[ssl_df.protocol == protocol]) - _mat(sup_df)) * 100
         sns.heatmap(delta, annot=True, fmt="+.0f", cmap="RdBu", center=0,
                     vmin=-vmax, vmax=vmax, mask=mask, ax=ax, linewidths=0.5,
-                    cbar=(c == 2), cbar_kws={"label": "Δ pp"},
+                    cbar=(c == len(ENCODERS) - 1), cbar_kws={"label": "Δ pp"},
                     annot_kws={"fontsize": 8})
         ax.set_title(ENCODER_PRETTY[encoder], fontsize=10)
         ax.set_xlabel("Target"); ax.set_ylabel("Source" if c == 0 else "")
@@ -556,7 +559,8 @@ def gap_bars(n_shots="full", metric="test_acc"):
     if ssl_df.empty or sup_df.empty:
         print("Precisa dos dois caches (SSL e SL)."); return
     rows = [("SL do zero", None), ("SSL finetune", "finetune")]
-    fig, axes = plt.subplots(2, 3, figsize=(14, 7.6), sharex=True, sharey=True)
+    fig, axes = plt.subplots(2, len(ENCODERS), figsize=(4.7 * len(ENCODERS), 7.6),
+                             sharex=True, sharey=True)
     width = 0.26
     x = np.arange(len(DATASETS))
     for r, (row_label, proto) in enumerate(rows):
@@ -618,7 +622,7 @@ def _scen_acc(proto, encoder, scen, target, shots, per_seed=False):
 
 
 def hyp_inversion_heatmap(metric_scale=100):
-    fig, axes = plt.subplots(3, 3, figsize=(12, 10.5))
+    fig, axes = plt.subplots(3, len(ENCODERS), figsize=(4.0 * len(ENCODERS), 10.5))
     for r, (key, proto) in enumerate(HYP_METHODS):
         for c, encoder in enumerate(ENCODERS):
             ax = axes[r, c]
@@ -642,7 +646,8 @@ def hyp_inversion_heatmap(metric_scale=100):
 
 
 def hyp_scatter(shots_rows=("10", "full")):
-    fig, axes = plt.subplots(len(shots_rows), 3, figsize=(12.5, 4.1 * len(shots_rows)),
+    fig, axes = plt.subplots(len(shots_rows), len(ENCODERS),
+                             figsize=(4.2 * len(ENCODERS), 4.1 * len(shots_rows)),
                              sharex=True, sharey=True)
     axes = np.atleast_2d(axes)
     for r, s in enumerate(shots_rows):
@@ -754,7 +759,7 @@ def c2t_heatmap(protocol="finetune"):
     \"\"\"Δ(comb→t − esp): efeito do corpus de pré-treino, mesmos dados de finetune.\"\"\"
     if c2t_df.empty:
         print("Cache comb→target ausente — rode scripts/ssl/run_comb2target.py."); return
-    fig, axes = plt.subplots(1, 3, figsize=(12.5, 4.2))
+    fig, axes = plt.subplots(1, len(ENCODERS), figsize=(4.2 * len(ENCODERS), 4.2))
     for c, encoder in enumerate(ENCODERS):
         ax = axes[c]
         mat = pd.DataFrame(
@@ -763,7 +768,8 @@ def c2t_heatmap(protocol="finetune"):
              for t in DATASETS],
             index=DATASETS, columns=[SHOT_LABELS[s] for s in SHOT_ORDER])
         sns.heatmap(mat, annot=True, fmt="+.0f", cmap="RdBu", center=0, vmin=-15, vmax=15,
-                    ax=ax, linewidths=0.5, cbar=(c == 2), cbar_kws={"label": "Δ pp"},
+                    ax=ax, linewidths=0.5, cbar=(c == len(ENCODERS) - 1),
+                    cbar_kws={"label": "Δ pp"},
                     annot_kws={"fontsize": 8})
         ax.set_title(ENCODER_PRETTY[encoder], fontsize=10)
         ax.set_yticklabels(ax.get_yticklabels() if c == 0 else [], fontsize=8, rotation=0)
@@ -781,7 +787,8 @@ def c2t_decomposition(protocol="finetune"):
     comp_colors = {"total": "#52514E", "pretreino": "#029E73", "dados": "#DE8F05"}
     comp_lbl = {"total": "Δ total (comb − esp)", "pretreino": "efeito pré-treino (comb→t − esp)",
                 "dados": "efeito dados finetune (comb − comb→t)"}
-    fig, axes = plt.subplots(1, 3, figsize=(12.5, 4.2), sharey=True)
+    fig, axes = plt.subplots(1, len(ENCODERS), figsize=(4.2 * len(ENCODERS), 4.2),
+                             sharey=True)
     x = np.arange(len(SHOT_ORDER))
     for c, encoder in enumerate(ENCODERS):
         ax = axes[c]
