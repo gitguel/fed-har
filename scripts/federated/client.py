@@ -30,11 +30,13 @@ from common import BATCH_SIZE, BEST_LR
 from supervised.train_resnetse5 import build_model as _build_resnetse5
 from supervised.train_cnnpff import build_model as _build_cnnpff
 from supervised.train_rnn import build_model as _build_rnn
+from supervised.train_tstcc import build_model as _build_tstcc
 
 BUILD_MODEL = {
     "resnetse5": _build_resnetse5,
     "cnnpff": _build_cnnpff,
     "rnn": _build_rnn,
+    "tstcc": _build_tstcc,
 }
 
 
@@ -78,6 +80,11 @@ class FlowerClient(fl.client.NumPyClient):
             num_workers=0,
             drop_last=True,
             pin_memory=(device.type == "cuda"),
+        )
+        # F2 da auditoria: com drop_last=True, um shard < batch_size produziria
+        # um loader vazio e o cliente devolveria os pesos recebidos sem treinar.
+        assert len(self.loader) > 0, (
+            f"shard com {self.num_examples} amostras < batch_size={batch_size}"
         )
 
     def get_parameters(self, config):  # noqa: D102
