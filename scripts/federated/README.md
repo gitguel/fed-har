@@ -23,6 +23,15 @@ baselines supervisionados (`scripts/common.py`, os `build_model` de
 | 2 | união dos 6 train sets, dividida em 6 fatias IID disjuntas | IID global (controle) |
 | 3..8 | 1 dataset dividido IID nos 6 clientes (um por cenário) | IID intra-domínio (ablação) |
 
+> **Escopo do Flower (decisão de 2026-07-13)**: esta pilha (Flower + ray) é
+> usada para o treino **supervisionado** federado — o baseline já medido e o
+> finetuning federado dos Exp. 2/3. O **pré-treino SSL federado NÃO usa
+> Flower**: é uma simulação exata de FedAvg em loop Python
+> (`scripts/ssl/pretrain_fed.py`, a fazer), incluindo a partição
+> **cross-device por usuário** — design em `docs/plano_fedssl_simulado.md`.
+> A `partitions.py` daqui ganha `make_ssl_client_datasets(partition, combo,
+> seed)` para servir os dois mundos.
+
 A comparação **1 vs 2** (mesmo volume total de dados) isola o efeito do *domain
 shift*: espera-se que o Cenário 2 (IID) fique próximo do baseline `combined`
 centralizado e o Cenário 1 (non-IID) fique abaixo.

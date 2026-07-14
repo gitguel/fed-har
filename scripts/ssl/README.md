@@ -1,17 +1,19 @@
 # scripts/ssl/ — Pré-treino auto-supervisionado (SSL) centralizado
 
-Pré-treino **SSL centralizado** dos 3 encoders (`resnetse5`, `cnnpff`, `rnn`) e
-avaliação downstream na **mesma matriz de transfer 7×6** dos baselines
-supervisionados, seguindo o padrão direto de `scripts/supervised/`.
+Pré-treino **SSL centralizado** dos 4 encoders (`resnetse5`, `cnnpff`, `rnn`,
+`tstcc`) e avaliação downstream na **mesma matriz de transfer 7×6** dos
+baselines supervisionados, seguindo o padrão direto de `scripts/supervised/`.
 
 ## Arquivos
 
 | Arquivo | Papel | Estado |
 |---|---|---|
-| `encoders.py` | `build_backbone(encoder) -> (backbone, enc_dim)` reusando os `build_model()` supervisionados | ✅ |
+| `encoders.py` | `build_backbone`/`build_tfc_backbone` `(encoder) -> (backbone, enc_dim)` reusando os `build_model()` supervisionados | ✅ |
 | `pretrain_lfr.py` | **Estágio A** — pré-treino LFR do backbone na fonte (sem rótulos); salva só o backbone | ✅ |
-| `downstream_eval.py` | **Estágios B+C** — treina cabeça (`linear`/`finetune`) × 4 regimes e avalia nos 6 alvos | ✅ |
-| `pretrain_tfc.py` | TF-C (`minerva/models/ssl/tfc.py` + FFT em `minerva/transforms/tfc.py`) — reusa `downstream_eval.py` | ⬜ a fazer |
+| `pretrain_tfc.py` | **Estágio A (TF-C)** — encoders gêmeos tempo/freq + NT-Xent poly; grade completa validada contra o benchmark (gate 7) | ✅ |
+| `downstream_eval.py` | **Estágios B+C** — `--method {lfr,tfc}`; treina cabeça (`linear`/`finetune`) × 4 regimes e avalia nos 6 alvos | ✅ |
+| `run_comb2target.py` | Grade comb→target (backbone `combined`, finetune só no alvo) | ✅ |
+| `pretrain_fed.py` | **Pré-treino federado SIMULADO** (FedAvg manual, sem Flower; modos one-shot/multi-round, partições silo/device) — ver `docs/plano_fedssl_simulado.md` | ⬜ a fazer |
 
 ## Pipeline (espelha o supervisionado centralizado)
 

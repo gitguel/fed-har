@@ -1,5 +1,14 @@
 # Plano de implementação — Experimento 3: pré-treino SSL federado + finetuning federado (FedAvg-SSL)
 
+> **STATUS (2026-07-13): parcialmente superseded.** Por decisão do orientador,
+> o pré-treino federado NÃO usará Flower — será uma simulação exata de FedAvg
+> (loop Python sobre o pipeline SSL centralizado), com o eixo novo de partição
+> cross-device por usuário. Ver `docs/plano_fedssl_simulado.md`, que herda as
+> decisões científicas deste doc (§3.1–3.6) e supersede as Fases 1–5
+> (`ssl_client.py`/`run_federated_ssl.py`/`run_all_ssl.py` não serão criados).
+> A **Fase 6** (finetuning federado via Flower) e a Fase 7 (downstream)
+> continuam válidas como estão.
+
 *Escrito em 2026-07-07, com base na leitura de `scripts/federated/*` e
 `scripts/ssl/*` no estado atual do repo (inclui as respostas do spike TF-C de
 2026-07-07 registradas no cabeçalho de `pretrain_tfc.py`). Complementa

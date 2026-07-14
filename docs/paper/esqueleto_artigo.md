@@ -290,6 +290,12 @@ o design doc `docs/plano_experimento3_fedssl.md`.*
   (cenário 2) — isola o efeito do domain shift; ablação: cada dataset
   individual dividido IID em 6 clientes (cenários 3–8) — isola o custo da
   federação sem heterogeneidade.
+- Federação **cross-device** (pré-treino, Exp. 3): 1 cliente por usuário do
+  train (coluna `user`; os splits do benchmark já são user-disjuntos ⇒ o eval
+  nos test sets segue intocado, sem vazamento). Non-IID "natural" por pessoa
+  + análise in-domain de colaboração entre clientes do mesmo domínio. KuHar
+  exige agrupar usuários em super-clientes (mediana de 10 janelas/usuário —
+  reportar como limitação de realismo); ver `docs/plano_fedssl_simulado.md`.
 - Desvio documentado vs benchmark: pré-treino SSL usa train+val da
   `standardized_view` (o benchmark usa a view `rodrigues_2024`).
 
@@ -345,9 +351,15 @@ Cabeça de classificação idêntica em tudo: MLP `Linear(dim→128)→ReLU→Li
   (fonte `combined`) como inicialização do FedAvg supervisionado no cenário 1;
   [PENDENTE: grade final — ver design doc Exp. 3, a infra de finetune é comum].
 - **Exp. 3 (SSL federado → finetuning federado, FedAvg-SSL)**: pré-treino LFR/
-  TF-C dentro do FedAvg (agregação de backbone [+ preditores], cenários 1 e 2),
-  seguido do mesmo finetuning federado — design completo em
-  `docs/plano_experimento3_fedssl.md`.
+  TF-C por **simulação exata de FedAvg** (full participation; treino local com
+  o pipeline SSL validado do Exp. 1 + média ponderada por rodada; comunicação
+  contada analiticamente sobre os tensores transmissíveis), em dois modos:
+  one-shot (sopa de especialistas por combinação de domínios, incl. LODO) e
+  multi-round (paridade de budget com o centralizado: TF-C R=100×1, LFR
+  R=100×bloco de 6), sobre partições cross-silo e cross-device; seguido do
+  mesmo finetuning federado (Flower, idêntico ao baseline) — design completo
+  em `docs/plano_fedssl_simulado.md` (supersede a execução via Flower de
+  `docs/plano_experimento3_fedssl.md`; decisões científicas herdadas de lá).
 - Seeds 0–3 em tudo; médias ± desvio-padrão.
 
 ---
@@ -427,8 +439,13 @@ implementação; ver design doc Exp. 3, Fase 5.]
 ### IV-E. Exp. 3 — pré-treino SSL federado (RQ3)
 
 [PENDENTE — componente de maior risco; design em
-`docs/plano_experimento3_fedssl.md`. Resultado negativo (divergência do
-FedAvg-SSL) também é publicável e será reportado como tal se ocorrer.]
+`docs/plano_fedssl_simulado.md` (simulação exata de FedAvg, modos one-shot e
+multi-round, partições cross-silo e cross-device). Resultado negativo
+(divergência do FedAvg-SSL / sopa catastrófica no one-shot) também é
+publicável e será reportado como tal se ocorrer. Resultados novos que o
+design simulado habilita: curva qualidade × frequência de agregação (R×E a
+budget fixo), custo isolado do fatiamento em rodadas (gate G-EQ2), sopas LODO
+como análogo federado do comb→target, e o cenário cross-device in-domain.]
 
 - **Tabela VII — qualidade da representação**: linear readout centralizado dos
   backbones FedSSL vs backbones centralizados equivalentes (mesma técnica,

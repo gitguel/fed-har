@@ -90,6 +90,8 @@ Log das principais decisões tomadas durante o planejamento, com justificativa. 
 - **6 clientes cross-silo, 1 dataset por cliente.** Cria heterogeneidade de domínio "por construção", sem necessidade de modelar artificialmente via Dirichlet (que faria mais sentido para label shift do que para domain shift).
 - **Acurácia + F1-macro.** F1-macro é importante porque os datasets de HAR costumam ter classes desbalanceadas.
 - **Custo de comunicação restrito a uplink/downlink/total.** Métricas mais fáceis de coletar e mais informativas para a comparação entre cenários. Tempo de treino e latência foram deixados de fora por dependerem do ambiente físico de execução.
+- **(2026-07-13, orientador) Pré-treino federado SEM Flower — simulação exata de FedAvg.** Como o pré-treino não usa seleção de clientes/stragglers (full participation), a federação é simulada num loop Python que reusa o pipeline SSL centralizado validado (gates vs benchmark) e faz a média ponderada dos state_dicts por rodada. Ganhos: reuso total do código validado, coerência DPP/projetores do LFR por construção, resume barato, re-agregação post-hoc de combinações de domínios (modo one-shot) e ablação R×E de graça. O Flower permanece no finetuning federado (comparabilidade com o baseline já medido). Design: `docs/plano_fedssl_simulado.md`; supersede as Fases 1–5 de `docs/plano_experimento3_fedssl.md`.
+- **(2026-07-13, orientador) Cenário cross-device por usuário no pré-treino.** 1 cliente por usuário (coluna `user` do DAGHAR; splits já são user-disjuntos ⇒ eval intocado). Realismo + análise in-domain de colaboração. Restrição medida: KuHar tem mediana de 10 janelas/usuário (48/57 usuários < batch 64) ⇒ agrupar em 6 super-clientes (decisão D-K do design doc).
 
 ---
 
