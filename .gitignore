@@ -218,3 +218,4 @@ __marimo__/
 # artefatos pesados de treino (ficam só na máquina)
 /checkpoints/
 /logs/
+docs/papers/**/*.pdf
