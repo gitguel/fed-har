@@ -165,13 +165,42 @@ sem perder o benefício — e a que custo de comunicação? Contribuições:
   global-local consistente.
 - **FedCA / federated unsupervised representation learning** [Zhang et al.] —
   alinhamento de representações entre clientes com dicionário compartilhado.
-- Aplicações a HAR: FedCSSL para smart homes (Springer, 2025/2026);
-  SSF-HAR (IEEE, 2024); semi-supervisionado personalizado (arXiv 2104.08094).
-- **Lacuna que exploramos**: essas obras usam métodos contrastivos de visão
-  (SimCLR/BYOL) e heterogeneidade simulada; nenhuma compara *pré-treino
-  centralizado vs federado* das mesmas técnicas de SSL de séries temporais
-  (LFR/TF-C) sob *domain shift real* cross-silo, com custo de comunicação
-  medido — exatamente o eixo deste artigo.
+- **FedX** [Han et al., ECCV 2022] — destilação cruzada; **L-DAWA** [Rehman
+  et al., ICCV 2023] — agregação ponderada por divergência camada a camada;
+  **FedMAE** [arXiv 2303.11339] e masked modeling federado — com o achado de
+  Yan et al. [arXiv 2205.08576] de que masked modeling é mais robusto a
+  heterogeneidade em FL que contrastivos (dialoga com nossa comparação
+  LFR vs TF-C); **FedSC** [arXiv 2405.03949] — garantias teóricas.
+- Aplicações a sensores/HAR: **UniHAR** [Xu et al., MobiCom 2023] — o
+  trabalho mais próximo: pré-treino contrastivo com aumentações físicas de
+  IMU + FL + treino adversarial em 4 datasets heterogêneos, mas com foco em
+  sistema/deployment, técnica SSL própria e sem comparação entre técnicas ou
+  topologias de pré-treino; FedCSSL para smart homes (Springer, 2026); CDFL
+  (arXiv 2407.12287); SSF-HAR (ICME 2024); clusterização delta-loss (Digital
+  Signal Processing, 2026); semi-supervisionado personalizado
+  (arXiv 2104.08094).
+- **Vizinho mais próximo (tempo-frequência em FL)**: **FedST** [ACM MM 2024]
+  e **FedOST** [IEEE Trans. Mobile Computing 2026] fazem *personalized FL* de
+  classificação de séries temporais usando visões de tempo e frequência com
+  projeção ortogonal. Distinguir com cuidado (revelado por snowballing reverso
+  de TF-C): são **supervisionados** (com rótulos), miram **personalização**
+  (não representação transferível contra domain shift), usam tempo-frequência
+  como *regularização* (não o método/protocolo TF-C nem pré-treino SSL), e não
+  medem comunicação nem comparam topologias. Nosso trabalho é o pré-treino SSL
+  tempo-frequência *federado*, ausente nesses.
+- **Inicialização de FL por pré-treino**: *Rethinking the Starting Point /
+  CoPreFL* [AAAI 2024] fundamenta a estratégia do nosso Exp. 2 (pré-treino
+  centralizado colaborativo → init do FL) — citar como base, não concorrente.
+- **Lacuna que exploramos**: essa literatura federa **uma** técnica por vez —
+  em geral contrastiva, própria ou SimCLR-like, sob heterogeneidade simulada
+  ou sem grupo de controle; nenhuma compara famílias de SSL entre si
+  (contrastiva vs livre de aumentações), nenhuma compara *pré-treino
+  centralizado vs federado* do mesmo método com budget pareado sob *domain
+  shift real* cross-silo, e o custo de comunicação aparece como técnica de
+  redução, não como métrica de decisão. LFR e TF-C — técnicas com protocolo
+  publicado e benchmark centralizado de referência — seguem inexploradas no
+  contexto federado (verificação de 2026-07-07; ver
+  `docs/estado_da_arte_fssl_e_contribuicoes.md`).
 
 ### II-E. Posicionamento em relação à linha H-IAAC (DAGHAR / benchmark)
 
@@ -191,10 +220,13 @@ Produção mapeada do grupo (toda **centralizada**; nenhuma envolve federação)
 | **Mix-based DG** [ESANN 2025, conferir autores] | Generalização de domínio via métodos mix (MixStyle etc.; melhor célula: TS2Vec+MixStyle) | Mitigação por manipulação de dados, não por pré-treino; centralizado |
 | **LIME vs SHAP** [Alves et al., BRACIS 2024] | Explicabilidade em HAR | Ortogonal ao nosso eixo |
 
-Nota: o H-IAAC tem também uma linha de FL (seleção de clientes, eficiência de
-comunicação, robustez — Cerqueira, Villas, Rosário et al.), mas **disjunta**
-desta: não trata HAR sob domain shift nem SSL. Nenhum trabalho do hub conecta
-as duas linhas — é exatamente a junção que este artigo faz.
+Nota: o H-IAAC tem também uma linha de **aprendizado distribuído/FL** (seleção
+de clientes, eficiência de comunicação, robustez — Cerqueira, Villas, Rosário
+et al.), **da qual este trabalho faz parte** — mas que até aqui não tratou HAR
+sob domain shift nem SSL. Este artigo é a ponte entre as duas linhas do hub:
+a linha distribuída fornece o arcabouço federado; a linha de benchmark fornece
+dados, protocolos e baselines validados. (Na redação, isso vira uma frase de
+contexto na introdução/acknowledgments, não na related work.)
 
 **Diferenças estruturais deste trabalho:**
 
@@ -209,9 +241,12 @@ as duas linhas — é exatamente a junção que este artigo faz.
    centralizado"; nós respondemos "o pré-treino (centralizado OU federado)
    melhora o finetuning federado sob domain shift, e a que custo?" — as duas
    estratégias (Exp. 2 e 3) não têm análogo em nenhum paper do grupo.
-3. **Pré-treino SSL federado (FedAvg-SSL) de LFR/TF-C**: inédito também na
-   literatura de FedSSL (que usa SimCLR/BYOL de visão) — e inédito para o
-   grupo.
+3. **Pré-treino SSL federado (FedAvg-SSL) de LFR/TF-C**: até onde sabemos,
+   LFR e TF-C nunca foram federados (verificação em
+   `docs/estado_da_arte_fssl_e_contribuicoes.md`, §3) — ⚠️ NÃO afirmar
+   "primeiro FedSSL de séries temporais" (Saeed 2021 e UniHAR falsificam);
+   o claim defensável é o desenho comparativo controlado, não o verbo
+   "federar".
 4. **Matriz de transferência cross-dataset para SSL.** O benchmark é só
    in-domain; o DAGHAR original faz cross-dataset mas só supervisionado. Nós
    cobrimos as 7 fontes × 6 alvos zero-shot para SL, LFR e TF-C, mais o
@@ -512,6 +547,20 @@ temporais, mais clientes, análise de privacidade.]
 18. [Conferir autores] "On Domain Generalization for Human Activity
     Recognition with Mix-Based Methods", ESANN 2025
     (esann.org/sites/default/files/proceedings/2025/ES2025-135.pdf).
+19. H. Xu, P. Zhou, R. Tan, M. Li, "Practically Adopting Human Activity
+    Recognition" (UniHAR), ACM MobiCom 2023.
+    DOI 10.1145/3570361.3613299.
+20. S. Han et al., "FedX: Unsupervised Federated Learning with Cross
+    Knowledge Distillation", ECCV 2022.
+21. Y. A. U. Rehman et al., "L-DAWA: Layer-wise Divergence Aware Weight
+    Aggregation in Federated Self-Supervised Visual Representation Learning",
+    ICCV 2023. arXiv:2307.07393.
+22. R. Yan et al., "Label-Efficient Self-Supervised Federated Learning for
+    Tackling Data Heterogeneity in Medical Imaging", IEEE TMI 2023.
+    arXiv:2205.08576.
+23. [Conferir] "FedSC: Provable Federated Self-supervised Learning with
+    Spectral Contrastive Objective over Non-i.i.d. Data", ICML 2024.
+    arXiv:2405.03949.
 
 *Ainda por buscar na fase de redação: citação canônica de TS-TCC (Eldele et
 al., IJCAI 2021) e TS2Vec (Yue et al., AAAI 2022) se entrarem no related work;
