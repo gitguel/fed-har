@@ -26,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import pandas as pd
 
 import flwr as fl
+from lightning.pytorch import seed_everything
 
 from common import PROJECT_ROOT, SEEDS
 from eval_transfer import DEVICE
@@ -88,6 +89,11 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+
+    # F1 da auditoria (2026-07-07): semeia o run inteiro (init do modelo global,
+    # shuffle dos loaders), não só o particionamento. Runs de encoders anteriores
+    # ao tstcc rodaram sem esta linha (RNG arbitrário; ver notebook federado).
+    seed_everything(args.seed, workers=True)
 
     # Dados por cliente (lista de datasets torch, um por cliente).
     client_datasets = make_client_datasets(args.scenario, args.seed, args.num_clients)
