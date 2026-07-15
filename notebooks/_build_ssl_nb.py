@@ -1,34 +1,62 @@
-"""Gera notebooks/ssl_lfr_avaliation.ipynb a partir de uma lista de células.
+"""Gera notebooks/ssl_<método>_avaliation.ipynb a partir de uma lista de células.
 
-Fonte versionável do notebook de avaliação SSL (LFR). Rodar
-`python notebooks/_build_ssl_nb.py` regera o esqueleto; um
-`jupyter nbconvert --execute` embute as figuras. Espelha o estilo do
-`centralized_supervised_avaliation.ipynb`, mas para o pré-treino SSL centralizado
-(LFR) avaliado em linear readout e full finetuning, ao longo dos regimes de dados.
+Fonte versionável dos notebooks de avaliação SSL centralizado, parametrizada
+pelo método de pré-treino:
+
+    python notebooks/_build_ssl_nb.py lfr   # -> ssl_lfr_avaliation.ipynb
+    python notebooks/_build_ssl_nb.py tfc   # -> ssl_tfc_avaliation.ipynb
+    python notebooks/_build_ssl_nb.py       # -> ambos
+
+Um `jupyter nbconvert --execute` embute as figuras. Espelha o estilo do
+`centralized_supervised_avaliation.ipynb`, mas para o pré-treino SSL
+centralizado avaliado em linear readout e full finetuning, ao longo dos
+regimes de dados. Nos textos das células, os tokens `@LABEL@` e `@SLUG@` são
+substituídos pelo nome do método (ex.: `TF-C`) e seu slug de arquivos (`tfc`).
 """
 
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
+
+CONFIGS = {
+    "lfr": {"label": "LFR", "slug": "lfr"},
+    "tfc": {"label": "TF-C", "slug": "tfc"},
+}
+
+_args = [a for a in sys.argv[1:] if not a.startswith("-")]
+if not _args:                      # sem argumento: gera os dois notebooks
+    import subprocess
+    for _m in CONFIGS:
+        subprocess.run([sys.executable, __file__, _m], check=True)
+    sys.exit(0)
+if _args[0] not in CONFIGS:
+    sys.exit(f"método desconhecido: {_args[0]!r} (opções: {sorted(CONFIGS)})")
+METHOD = _args[0]
+CFG = CONFIGS[METHOD]
 
 cells: list[dict] = []
 
 
+def _sub(text: str) -> str:
+    return text.replace("@LABEL@", CFG["label"]).replace("@SLUG@", CFG["slug"])
+
+
 def md(text: str) -> None:
     cells.append({"cell_type": "markdown", "metadata": {},
-                  "source": text.strip("\n").splitlines(keepends=True)})
+                  "source": _sub(text).strip("\n").splitlines(keepends=True)})
 
 
 def code(text: str) -> None:
     cells.append({"cell_type": "code", "execution_count": None, "metadata": {},
-                  "outputs": [], "source": text.strip("\n").splitlines(keepends=True)})
+                  "outputs": [], "source": _sub(text).strip("\n").splitlines(keepends=True)})
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 md(
     """
-# Avaliação SSL centralizado (LFR) — DAGHAR / HAR
+# Avaliação SSL centralizado (@LABEL@) — DAGHAR / HAR
 
 Notebook **somente de leitura/visualização**. Lê os caches gerados por
 `scripts/ssl/downstream_eval.py` e `scripts/eval_transfer.py` e produz a
@@ -36,7 +64,7 @@ comparação **supervisionado (SL) vs auto-supervisionado (SSL)** ao longo dos
 regimes de dados rotulados.
 
 **Pipeline SSL avaliado**: para cada (encoder, fonte, semente) um *backbone* é
-pré-treinado com **LFR** na fonte (sem rótulos) e depois avaliado na matriz de
+pré-treinado com **@LABEL@** na fonte (sem rótulos) e depois avaliado na matriz de
 transfer 7×6 (fontes = 6 datasets + `combined`; alvos = 6 datasets), em:
 
 - **2 protocolos**: `linear` (readout, backbone congelado) e `finetune`
@@ -45,7 +73,7 @@ transfer 7×6 (fontes = 6 datasets + `combined`; alvos = 6 datasets), em:
   e 100% (`full`).
 
 Fontes de dados:
-`results/ssl_lfr_eval_transfer.csv`
+`results/ssl_@SLUG@_eval_transfer.csv`
 (`encoder, source, seed, protocol, n_shots, target, test_acc, test_f1_macro`) e
 `results/supervised_eval_transfer.csv` (baseline SL, mesmos eixos).
 
@@ -124,7 +152,7 @@ METHOD_COLORS = {
 HEATMAP_CMAP = "mako"
 
 RESULTS_DIR = PROJECT_ROOT / "results"
-SSL_CACHE = RESULTS_DIR / "ssl_lfr_eval_transfer.csv"
+SSL_CACHE = RESULTS_DIR / "ssl_@SLUG@_eval_transfer.csv"
 SUP_CACHE = RESULTS_DIR / "supervised_eval_transfer.csv"
 print("SSL cache:", SSL_CACHE)
 print("SL  cache:", SUP_CACHE)
@@ -139,7 +167,7 @@ md(
 Ambos os caches são apenas lidos. Para (re)gerar:
 
 ```bash
-python scripts/ssl/pretrain_lfr.py        # 84 backbones LFR
+python scripts/ssl/pretrain_@SLUG@.py     # backbones @LABEL@
 python scripts/ssl/downstream_eval.py     # linear + finetune × 4 regimes
 python scripts/eval_transfer.py --shots... # baseline SL nos regimes (ver notebook supervisionado)
 ```
@@ -226,7 +254,7 @@ def draw_ssl_heatmap(protocol: str, n_shots: str = "full", encoder=None):
         print(f"Sem dados para protocol={protocol}, n_shots={n_shots}, encoder={encoder}."); return
     enc_txt = ENCODER_PRETTY.get(encoder, "Agregado (3 encoders)")
     _draw_transfer_heatmap(
-        sub, f"SSL/LFR — {PROTOCOL_PRETTY[protocol]} @ {SHOT_LABELS.get(str(n_shots), n_shots)} — {enc_txt}\\n"
+        sub, f"SSL/@LABEL@ — {PROTOCOL_PRETTY[protocol]} @ {SHOT_LABELS.get(str(n_shots), n_shots)} — {enc_txt}\\n"
              "linha = source (1ª = combinado), coluna = target")
 
 
@@ -424,7 +452,7 @@ def bars_by_scenario(metric="test_acc"):
             ax.set_xticks(x); ax.set_xticklabels([SHOT_LABELS[s] for s in SHOT_ORDER])
             ax.set_ylim(0, 100); ax.grid(axis="y", alpha=0.3); ax.set_axisbelow(True)
     fig.legend(loc="upper right", ncols=3, fontsize=9, frameon=False)
-    fig.suptitle("SL vs SSL (LFR) por cenário de avaliação — barra de erro = dp entre seeds",
+    fig.suptitle("SL vs SSL (@LABEL@) por cenário de avaliação — barra de erro = dp entre seeds",
                  y=1.02, fontsize=12)
     plt.tight_layout(); plt.show()
 
@@ -741,7 +769,7 @@ seu contrafactual):
 
 code(
     """
-C2T_CACHE = RESULTS_DIR / "ssl_lfr_comb2target_eval_transfer.csv"
+C2T_CACHE = RESULTS_DIR / "ssl_@SLUG@_comb2target_eval_transfer.csv"
 c2t_df = _load(C2T_CACHE, SSL_COLS)
 if not c2t_df.empty:
     print(f"comb→target: {len(c2t_df)} linhas | fontes(finetune)={sorted(c2t_df.source.unique())}")
@@ -823,8 +851,8 @@ c2t_decomposition("linear")
 )
 
 # ── 10. Conclusões ──────────────────────────────────────────────────────────
-md(
-    """
+CONCLUSIONS = {}
+CONCLUSIONS["lfr"] = """
 ## 10. Conclusões
 
 *Grade v1 (config oficial do benchmark), validada contra o paper em 2026-07-06 —
@@ -864,7 +892,45 @@ Próximos passos do plano (Seção 10 das notas internas): encoder **TS-TCC**
 `downstream_eval.py`), e o **Experimento 2** (SSL centralizado → finetuning
 federado), plugando estes backbones no `scripts/federated/`.
 """
-)
+
+CONCLUSIONS["tfc"] = """
+## 10. Conclusões
+
+*Grade TF-C completa nos 4 encoders (commitada 2026-07-13; gates vs benchmark
+PASS); comb→target gerado em 2026-07-14 (96 runs, 4608 linhas). Números
+abaixo em F1-macro, Δ = TF-C finetune − SL, média sobre seeds.*
+
+- **Eficiência de dados**: ao contrário do LFR (ganho só na RNN), o TF-C
+  ajuda **CNN-PFF e RNN de forma grande e consistente** em todos os regimes
+  (in-domain: +17 a +23 pp CNN-PFF e +18 a +32 pp RNN em 1/10-shot; ainda
+  +7.6/+19.1 pp @100%). TS-TCC fica ~neutro (−1 a +4 pp) e a ResNet-SE-5 é
+  **negativa @1-shot** (−16.8 pp in-domain) mas recupera de 10-shot em
+  diante (+2.8 a +5.2 pp).
+- **Teto a 100%**: diferente do LFR (≈ SL), o TF-C **supera o SL na diagonal**
+  em 3/4 encoders (CNN-PFF +7.6, RNN +19.1, ResNet +2.7 pp; TS-TCC +3.8) e no
+  combinado (média 74.4 vs 64.4 do SL).
+- **Transferência out-domain**: o TF-C desloca o nível em **todos** os
+  encoders exceto TS-TCC (+6 pp CNN-PFF/RNN, +2 a +5 ResNet @10-shot em
+  diante) — vs LFR que era ~0 fora da RNN. O gap de domain shift continua
+  dominante (F1 na faixa 35–43%), mas o TF-C é o método que mais o reduz.
+- **Linear vs finetune**: as representações TF-C são **menos linearmente
+  separáveis** que as do LFR (linear @full: 63.0 vs 65.7 no combinado;
+  RNN 36.1 vs 43.1 no comb→target) e o linear @1-shot desaba (10.8 vs 19.7).
+  TF-C é um método "para finetunar": o ganho só se realiza adaptando o
+  backbone.
+- **Mecanismo (comb→target, §9.2)**: mesma conclusão do LFR — na diagonal, o
+  pré-treino multi-domínio custa ~nada (finetune: Δ médio **+0.8 pp** vs
+  especialista, c2t ≥ esp em 4/6 alvos; linear: −0.1 pp). O custo do cenário
+  combinado vem dos **rótulos mistos no finetune**, não do corpus de
+  pré-treino. Backbone global + finetune local segue sendo a configuração
+  mais promissora para o federado.
+
+**Implicação para o FedSSL (Exp. 3)**: TF-C é o candidato default de método
+de pré-treino federado (move transfer e in-domain em 3/4 encoders), com
+protocolo downstream **finetune** — em linear o TF-C perde para o LFR.
+"""
+
+md(CONCLUSIONS[METHOD])
 
 # ─────────────────────────────────────────────────────────────────────────────
 nb = {
@@ -877,6 +943,6 @@ nb = {
     "nbformat_minor": 5,
 }
 
-out = Path(__file__).resolve().parent / "ssl_lfr_avaliation.ipynb"
+out = Path(__file__).resolve().parent / f"ssl_{CFG['slug']}_avaliation.ipynb"
 out.write_text(json.dumps(nb, indent=1, ensure_ascii=False))
 print(f"Escrito: {out}  ({len(cells)} células)")
