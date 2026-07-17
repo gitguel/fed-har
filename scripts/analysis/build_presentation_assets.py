@@ -196,26 +196,28 @@ def fig_cenarios(df):
     print("wrote", OUT / "fig_ssl_vs_sl_cenarios.png")
 
 
-def fig_fewshot(df):
+def fig_fewshot(df, ssl_protocol="finetune", fname="fig_ssl_vs_sl_fewshot.png",
+                subtitle="SL vs SSL-finetune"):
     fig, axes = plt.subplots(1, 2, figsize=(9.5, 3.6), sharey=True)
     x = np.arange(4)
     for ax, setting in zip(axes, ["in", "cross"]):
-        d = df[(df.setting == setting) & (df.protocol.isin(["sl", "finetune"]))]
+        d = df[(df.setting == setting) & (df.protocol.isin(["sl", ssl_protocol]))]
         for m in ["SL", "LFR", "TF-C"]:
             y = agg(d[d.method == m], ["n_shots"])["test_acc"].reindex(SHOT_ORDER)
+            label = m if m == "SL" or ssl_protocol == "finetune" else f"{m} (linear)"
             ax.plot(x, y, marker="o", markersize=6, linewidth=2,
-                    color=METHOD_COLORS[m], label=m)
+                    color=METHOD_COLORS[m], label=label)
         ax.set_xticks(x, SHOT_LABELS, fontsize=9)
         ax.set_title(SCEN_PRETTY[setting], fontsize=11)
         style_ax(ax)
     axes[0].set_ylabel("Acurácia (%)")
     axes[0].legend(frameon=False, fontsize=10)
-    fig.suptitle("Eficiência de dados: SL vs SSL-finetune (média encoders × seeds)",
+    fig.suptitle(f"Eficiência de dados: {subtitle} (média encoders × seeds)",
                  fontsize=12, y=1.04)
     fig.tight_layout()
-    fig.savefig(OUT / "fig_ssl_vs_sl_fewshot.png", dpi=300, bbox_inches="tight")
+    fig.savefig(OUT / fname, dpi=300, bbox_inches="tight")
     plt.close(fig)
-    print("wrote", OUT / "fig_ssl_vs_sl_fewshot.png")
+    print("wrote", OUT / fname)
 
 
 def fig_c2t(sheet, method="TF-C", fname="fig_tfc_comb2target.png",
@@ -260,6 +262,9 @@ def main():
                         "TF-C vs SL — acurácia in-domain por regime de rótulos")
     fig_cenarios(df)
     fig_fewshot(df)
+    fig_fewshot(df, ssl_protocol="linear",
+                fname="fig_ssl_vs_sl_fewshot_linear.png",
+                subtitle="SL vs SSL-linear readout")
     fig_c2t(sheets["comb2target"])
     fig_c2t(sheets["comb2target"], method="LFR", fname="fig_lfr_comb2target.png",
             headline="pré-treino multi-domínio ~neutro no próprio domínio")
