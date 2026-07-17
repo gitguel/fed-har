@@ -247,6 +247,35 @@ def fig_c2t(sheet, method="TF-C", fname="fig_tfc_comb2target.png",
     print("wrote", OUT / fname)
 
 
+def fig_cross_by_target(df):
+    full = df[(df.n_shots == "full") & (df.protocol.isin(["sl", "finetune"]))]
+    cross = (agg(full[full.setting == "cross"], ["target", "method"])["test_acc"]
+             .unstack("method")[["SL", "LFR", "TF-C"]])
+    esp = agg(full[(full.setting == "in") & (full.method == "SL")],
+              ["target"])["test_acc"].reindex(cross.index)
+    fig, ax = plt.subplots(figsize=(9, 4.2))
+    x, w = np.arange(len(cross)), 0.26
+    for i, m in enumerate(["SL", "LFR", "TF-C"]):
+        bars = ax.bar(x + (i - 1) * w, cross[m], w * 0.93,
+                      color=METHOD_COLORS[m], label=m if m != "SL" else "SL (do zero)")
+        ax.bar_label(bars, fmt="%.0f", fontsize=8, padding=2)
+    ax.hlines(esp, x - 1.5 * w, x + 1.5 * w, color="#333333", linewidth=1.6,
+              linestyle="--", label="Nível in-domain (SL especialista)")
+    ax.set_xticks(x, cross.index, fontsize=9)
+    ax.set_ylabel("Acurácia no target (%)")
+    ax.set_ylim(0, 100)
+    ax.set_title("Transfer cross-domain: treinar em outro domínio derruba o desempenho\n"
+                 "(média das 5 fontes ≠ target; finetune, 100% dos rótulos; "
+                 "4 encoders × 4 seeds)", fontsize=11)
+    ax.legend(frameon=False, fontsize=9, loc="upper center",
+              bbox_to_anchor=(0.5, -0.10), ncol=4)
+    style_ax(ax)
+    fig.tight_layout()
+    fig.savefig(OUT / "fig_cross_domain_por_target.png", dpi=300, bbox_inches="tight")
+    plt.close(fig)
+    print("wrote", OUT / "fig_cross_domain_por_target.png")
+
+
 def main():
     df = load()
     c2t = load_c2t()
@@ -263,6 +292,7 @@ def main():
     fig_data_efficiency(df, "TF-C", "fig_tfc_data_efficiency.png",
                         "TF-C vs SL — acurácia in-domain por regime de rótulos")
     fig_cenarios(df)
+    fig_cross_by_target(df)
     fig_fewshot(df)
     fig_fewshot(df, ssl_protocol="linear",
                 fname="fig_ssl_vs_sl_fewshot_linear.png",
