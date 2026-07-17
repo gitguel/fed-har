@@ -1,6 +1,6 @@
 # Texto sugerido — slides SSL centralizado (LFR, TF-C, SSL vs SL)
 
-Assets nesta pasta: `resultados_ssl.xlsx` (5 abas) e 5 figuras PNG (300 dpi).
+Assets nesta pasta: `resultados_ssl.xlsx` (5 abas) e 6 figuras PNG (300 dpi).
 Todos os números: acurácia média sobre 4 encoders × 4 seeds; SSL avaliado em
 protocolo *finetune* salvo indicação. Fonte: caches `results/ssl_{lfr,tfc}_eval_transfer.csv`,
 `results/supervised_eval_transfer.csv`, `results/ssl_{lfr,tfc}_comb2target_eval_transfer.csv`.
@@ -11,6 +11,9 @@ protocolo *finetune* salvo indicação. Fonte: caches `results/ssl_{lfr,tfc}_eva
 **Figura:** `fig_lfr_data_efficiency.png` | **Tabela de apoio:** aba `encoder_x_tecnica`
 
 - Setup: pré-treino LFR + linear readout / fine-tuning, mesmos 4 encoders e 4 regimes de rótulos.
+- (Se usar o par com o Slide C) `fig_lfr_comb2target.png`: no LFR o backbone
+  multi-domínio é apenas ~neutro no próprio domínio (5/6 datasets; KuHar −3,5 pp) —
+  sem o ganho observado no TF-C.
 - Na média, LFR ≈ SL (+1,3 pp in-domain @100%): o ganho é **concentrado no BiGRU**
   (+17 pp @10-shot, +3,4 pp @100%); ResNet-SE-5 neutro; CNN-PFF chega a piorar (−3,9 pp @100%).
 - Replica o comportamento reportado no benchmark (da Luz et al., IEEE Access 2026):
@@ -28,16 +31,25 @@ protocolo *finetune* salvo indicação. Fonte: caches `results/ssl_{lfr,tfc}_eva
   separável) → TF-C é um método para *finetune*.
 
 ## Slide C — TF-C (slide 2, opcional — ponte para o federado)
-**Figura:** `fig_tfc_comb2target.png` | **Tabela de apoio:** aba `comb2target`
+**Figura:** `fig_tfc_comb2target.png` (opcional: `fig_lfr_comb2target.png` ao lado)
+**Tabela de apoio:** aba `comb2target`
 
-- Decompomos o cenário "combined": backbone pré-treinado no corpus multi-domínio,
-  finetune só com os rótulos do dataset alvo (proxy centralizado de
-  "backbone global federado + finetune local").
-- **Pré-treinar em multi-domínio custa ~nada no próprio domínio** (Δ médio +0,5 pp
-  com TF-C; ≥ especialista em 4/6 datasets).
-- A queda do cenário combined vem dos **rótulos misturados no finetune**, não do
-  corpus de pré-treino → motiva o FedSSL cross-device: pré-treino global sem rótulos
-  + adaptação local.
+- Decompomos o cenário "combined". As 3 barras compartilham o protocolo e diferem
+  em pré-treino/finetune:
+  - **Especialista** (azul): pré-treino e finetune só no próprio dataset;
+  - **Pré-treino multi + finetune local** (verde): backbone pré-treinado sem rótulos
+    no corpus dos 6 datasets, classificador ajustado só com os rótulos do alvo —
+    proxy centralizado de "backbone global federado + finetune local";
+  - **Finetune misturado / combined** (cinza): mesmo backbone multi-domínio, mas
+    finetune com os rótulos dos 6 datasets juntos.
+- Verde ≈ azul: **pré-treinar em multi-domínio custa ~nada no próprio domínio**
+  (Δ médio +0,5 pp com TF-C; ≥ especialista em 4/6 datasets).
+- Cinza < verde: a queda do cenário combined vem dos **rótulos misturados no
+  finetune** (até −7 pp no WISDM), não do corpus de pré-treino → motiva o FedSSL
+  cross-device: pré-treino global sem rótulos + adaptação local.
+- Contraste com LFR (`fig_lfr_comb2target.png`): backbone multi-domínio apenas
+  ~neutro (KuHar −3,5 pp) — mais um motivo para TF-C ser o método default do
+  federado.
 
 ## Slide D — Comparação final SSL vs SL
 **Figuras:** `fig_ssl_vs_sl_cenarios.png` (principal) e `fig_ssl_vs_sl_fewshot.png`
