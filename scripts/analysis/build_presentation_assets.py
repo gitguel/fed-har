@@ -223,9 +223,9 @@ def fig_c2t(sheet, method="TF-C", fname="fig_tfc_comb2target.png",
     t = sheet.loc[method]
     fig, ax = plt.subplots(figsize=(9, 4))
     x, w = np.arange(len(t)), 0.26
-    cols = [("Especialista (%)", "#0173B2", "Especialista (pré-treino próprio)"),
-            ("Comb→target (%)", "#029E73", "Pré-treino multi-domínio + finetune local"),
-            ("Combined (%)", "#949494", "Combined (finetune com rótulos misturados)")]
+    cols = [("Especialista (%)", "#0173B2", "Especialista"),
+            ("Comb→target (%)", "#029E73", "Pré-treino multi + finetune local"),
+            ("Combined (%)", "#949494", "Finetune misturado (combined)")]
     for i, (c, color, label) in enumerate(cols):
         bars = ax.bar(x + (i - 1) * w, t[c], w * 0.93, color=color, label=label)
         ax.bar_label(bars, fmt="%.0f", fontsize=8, padding=2)
