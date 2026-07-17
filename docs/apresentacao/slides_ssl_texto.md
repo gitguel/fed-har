@@ -27,8 +27,10 @@ protocolo *finetune* salvo indicação. Fonte: caches `results/ssl_{lfr,tfc}_eva
 - O ganho **não desaparece com 100% dos rótulos** (vence SL em 3/4 encoders no teto):
   "SSL só ajuda em few-shot" não vale para TF-C.
 - Maiores beneficiários: BiGRU (+13,6 pp) e CNN-PFF (+6,0 pp) @100%.
-- Ressalva: sob **linear readout** TF-C perde para LFR (representação menos linearmente
-  separável) → TF-C é um método para *finetune*.
+- Ressalva: sob **linear readout** (fig `fig_ssl_vs_sl_fewshot_linear.png`) o TF-C
+  só perde para o LFR no caso extremo de 1-shot (29,9 vs 38,7); lidera de 10 a
+  100-shot e empata no teto (71,8 vs 73,7 @100%). Ainda assim, os ganhos grandes
+  do TF-C exigem *finetune*.
 
 ## Slide C — TF-C (slide 2, opcional — ponte para o federado)
 **Figura:** `fig_tfc_comb2target.png` (opcional: `fig_lfr_comb2target.png` ao lado)
@@ -69,5 +71,6 @@ Conclusões (calibradas):
    comb2target mostra que esse backbone global não sacrifica o especialista →
    justificativa direta do experimento FedSSL cross-device.
 
-Nota de rodapé sugerida: SSL sob linear readout não supera SL (LFR 73,7 / TF-C 71,8
-vs 76,6 in-domain) — os ganhos exigem finetune.
+Nota de rodapé sugerida: sob linear readout (backbone congelado — sem comparação
+direta com SL, que treina o backbone) os ganhos são menores e LFR só supera TF-C
+no 1-shot; os ganhos relevantes do SSL exigem finetune.
