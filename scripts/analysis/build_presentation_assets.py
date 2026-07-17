@@ -218,8 +218,9 @@ def fig_fewshot(df):
     print("wrote", OUT / "fig_ssl_vs_sl_fewshot.png")
 
 
-def fig_c2t(sheet):
-    t = sheet.loc["TF-C"]
+def fig_c2t(sheet, method="TF-C", fname="fig_tfc_comb2target.png",
+            headline="pré-treinar no corpus multi-domínio não degrada o especialista"):
+    t = sheet.loc[method]
     fig, ax = plt.subplots(figsize=(9, 4))
     x, w = np.arange(len(t)), 0.26
     cols = [("Especialista (%)", "#0173B2", "Especialista (pré-treino próprio)"),
@@ -231,15 +232,15 @@ def fig_c2t(sheet):
     ax.set_xticks(x, t.index, fontsize=9)
     ax.set_ylabel("Acurácia (%)")
     ax.set_ylim(0, 100)
-    ax.set_title("TF-C: pré-treinar no corpus multi-domínio não degrada o especialista\n"
+    ax.set_title(f"{method}: {headline}\n"
                  "(finetune, 100% dos rótulos; média 4 encoders × 4 seeds)", fontsize=11)
     ax.legend(frameon=False, fontsize=9, loc="upper center",
               bbox_to_anchor=(0.5, -0.10), ncol=3)
     style_ax(ax)
     fig.tight_layout()
-    fig.savefig(OUT / "fig_tfc_comb2target.png", dpi=300, bbox_inches="tight")
+    fig.savefig(OUT / fname, dpi=300, bbox_inches="tight")
     plt.close(fig)
-    print("wrote", OUT / "fig_tfc_comb2target.png")
+    print("wrote", OUT / fname)
 
 
 def main():
@@ -260,6 +261,8 @@ def main():
     fig_cenarios(df)
     fig_fewshot(df)
     fig_c2t(sheets["comb2target"])
+    fig_c2t(sheets["comb2target"], method="LFR", fname="fig_lfr_comb2target.png",
+            headline="pré-treino multi-domínio ~neutro no próprio domínio")
 
 
 if __name__ == "__main__":
