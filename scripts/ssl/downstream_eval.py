@@ -114,10 +114,17 @@ class Probe(nn.Module):
         return self.head(z)
 
 
-def load_probe(encoder: str, pretrain_source: str, seed: int, method: str = "lfr") -> Probe:
-    """Constrói o backbone do método, injeta os pesos pré-treinados e acopla a cabeça."""
+def load_probe(encoder: str, pretrain_source: str, seed: int, method: str = "lfr",
+               ckpt_dir: Path | None = None) -> Probe:
+    """Constrói o backbone do método, injeta os pesos pré-treinados e acopla a cabeça.
+
+    `ckpt_dir` (opcional) aponta direto para o diretório do `backbone.ckpt`
+    (ex.: um checkpoint federado de `checkpoints/ssl_fed/...`), ignorando o
+    layout centralizado `ssl_ckpt_dir`.
+    """
     backbone, enc_dim = BUILD_SSL_BACKBONE[method](encoder)
-    ckpt = ssl_ckpt_dir(encoder, pretrain_source, seed, method) / "backbone.ckpt"
+    base = ckpt_dir if ckpt_dir is not None else ssl_ckpt_dir(encoder, pretrain_source, seed, method)
+    ckpt = Path(base) / "backbone.ckpt"
     state = torch.load(ckpt, map_location="cpu")
     backbone.load_state_dict(state, strict=True)
     return Probe(backbone, enc_dim)
@@ -221,7 +228,18 @@ def main() -> None:
     parser.add_argument("--pretrain-source", choices=SOURCES, default=None,
                         help="Fonte do backbone, se diferente da fonte do refinamento "
                              "(ex.: 'combined' p/ o experimento comb→target).")
+    parser.add_argument("--ckpt-dir", type=str, default=None,
+                        help="Diretório com backbone.ckpt fora do layout centralizado "
+                             "(ex.: checkpoints/ssl_fed/...). Exige --out e um único "
+                             "--encoder/--seed.")
     args = parser.parse_args()
+
+    ckpt_dir = Path(args.ckpt_dir) if args.ckpt_dir else None
+    if ckpt_dir is not None:
+        if not args.out:
+            parser.error("--ckpt-dir exige --out (cache próprio, fora dos globais).")
+        if len(args.encoder) != 1 or len(args.seed) != 1:
+            parser.error("--ckpt-dir exige exatamente um --encoder e um --seed.")
 
     global CACHE
     if args.out:
@@ -250,7 +268,8 @@ def main() -> None:
         for source in args.source:
             for seed in args.seed:
                 backbone_src = args.pretrain_source or source
-                ckpt = ssl_ckpt_dir(encoder, backbone_src, seed, args.method) / "backbone.ckpt"
+                base = ckpt_dir or ssl_ckpt_dir(encoder, backbone_src, seed, args.method)
+                ckpt = base / "backbone.ckpt"
                 if not ckpt.exists():
                     print(f"[miss] backbone ausente: {ckpt}", flush=True)
                     continue
@@ -263,7 +282,8 @@ def main() -> None:
                             continue
 
                         seed_everything(seed, workers=True)
-                        probe = load_probe(encoder, backbone_src, seed, args.method)
+                        probe = load_probe(encoder, backbone_src, seed, args.method,
+                                           ckpt_dir=ckpt_dir)
                         dm = make_datamodule(source, seed, num_workers=args.num_workers)
                         loader = subsampled_train_loader(
                             dm, n_shots, seed, batch_size=BATCH_SIZE,
