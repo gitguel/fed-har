@@ -201,8 +201,10 @@ def fig_fewshot(df, ssl_protocol="finetune", fname="fig_ssl_vs_sl_fewshot.png",
     fig, axes = plt.subplots(1, 2, figsize=(9.5, 3.6), sharey=True)
     x = np.arange(4)
     for ax, setting in zip(axes, ["in", "cross"]):
-        d = df[(df.setting == setting) & (df.protocol.isin(["sl", ssl_protocol]))]
-        for m in ["SL", "LFR", "TF-C"]:
+        methods = ["SL", "LFR", "TF-C"] if ssl_protocol == "finetune" else ["LFR", "TF-C"]
+        d = df[(df.setting == setting) & (df.protocol == ssl_protocol)
+               | (df.setting == setting) & (df.protocol == "sl") & (df.method == "SL")]
+        for m in methods:
             y = agg(d[d.method == m], ["n_shots"])["test_acc"].reindex(SHOT_ORDER)
             label = m if m == "SL" or ssl_protocol == "finetune" else f"{m} (linear)"
             ax.plot(x, y, marker="o", markersize=6, linewidth=2,
@@ -264,7 +266,7 @@ def main():
     fig_fewshot(df)
     fig_fewshot(df, ssl_protocol="linear",
                 fname="fig_ssl_vs_sl_fewshot_linear.png",
-                subtitle="SL vs SSL-linear readout")
+                subtitle="LFR vs TF-C sob linear readout")
     fig_c2t(sheets["comb2target"])
     fig_c2t(sheets["comb2target"], method="LFR", fname="fig_lfr_comb2target.png",
             headline="pré-treino multi-domínio ~neutro no próprio domínio")
