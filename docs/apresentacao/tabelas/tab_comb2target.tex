@@ -1,0 +1,35 @@
+\documentclass[border=8pt,varwidth=\maxdimen]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{booktabs,multirow}
+\usepackage{newtxtext,newtxmath}
+\begin{document}
+
+\centering
+{\large\bfseries Pré-treino multi-dataset vs.\ especialista}\\[2pt]
+{\small Acurácia de teste (\%) por dataset alvo. \textbf{Negrito} = melhor estratégia por linha.}\\[6pt]
+\begin{tabular}{llccccc}
+\toprule
+& & \multicolumn{3}{c}{Acurácia (\%)} & \multicolumn{2}{c}{$\Delta$ (pp)}\\
+\cmidrule(lr){3-5}\cmidrule(lr){6-7}
+Método & Alvo & Especialista & Comb$\to$alvo & Combined & Pré-treino multi & Rótulos mist.\\
+\midrule
+\multirow{6}{*}{LFR}
+ & KuHar            & \textbf{62{,}1} & 58{,}5 & 61{,}7 & $-$3{,}5 & $+$3{,}2\\
+ & MotionSense      & 85{,}8 & \textbf{86{,}0} & 80{,}4 & $+$0{,}2 & $-$5{,}6\\
+ & RealWorld\_thigh & 69{,}8 & 68{,}2 & \textbf{70{,}0} & $-$1{,}5 & $+$1{,}7\\
+ & RealWorld\_waist & 72{,}0 & \textbf{72{,}2} & 70{,}5 & $+$0{,}1 & $-$1{,}7\\
+ & UCI              & 91{,}5 & \textbf{91{,}9} & 80{,}2 & $+$0{,}5 & $-$11{,}7\\
+ & WISDM            & 86{,}0 & \textbf{86{,}1} & 76{,}7 & $+$0{,}0 & $-$9{,}3\\
+\midrule
+\multirow{6}{*}{TF-C}
+ & KuHar            & 75{,}5 & \textbf{77{,}4} & 73{,}2 & $+$1{,}9 & $-$4{,}2\\
+ & MotionSense      & 89{,}9 & \textbf{90{,}9} & 86{,}8 & $+$1{,}0 & $-$4{,}1\\
+ & RealWorld\_thigh & 72{,}8 & 74{,}0 & \textbf{76{,}8} & $+$1{,}2 & $+$2{,}8\\
+ & RealWorld\_waist & \textbf{76{,}3} & 75{,}7 & 75{,}4 & $-$0{,}6 & $-$0{,}3\\
+ & UCI              & \textbf{94{,}7} & 92{,}9 & 87{,}5 & $-$1{,}8 & $-$5{,}5\\
+ & WISDM            & 87{,}7 & \textbf{88{,}8} & 81{,}5 & $+$1{,}1 & $-$7{,}3\\
+\bottomrule
+\end{tabular}
+
+\end{document}
