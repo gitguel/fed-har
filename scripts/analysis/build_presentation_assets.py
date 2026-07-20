@@ -7,6 +7,8 @@ Lê apenas os caches de results/ e escreve em docs/apresentacao/:
     tabelas/tab_regimes_finetune.{tex,pdf}, tabelas/tab_regimes_linear.{tex,pdf}
   - fig_lfr_data_efficiency.png, fig_tfc_data_efficiency.png,
     fig_tfc_comb2target.png, fig_ssl_vs_sl_cenarios.png, fig_ssl_vs_sl_fewshot.png
+  - fig_transfer_matrix_acc.png (acurácia fonte×alvo por método),
+    fig_transfer_matrix_delta.png (Δ SSL−SL fonte×alvo, LFR e TF-C)
 
 As médias são sobre todos os runs agregados na célula (encoders × seeds ×
 fontes); o desvio-padrão é ENTRE SEEDS (cada seed reduzida à sua média, dp
@@ -25,6 +27,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # .../scripts
 
@@ -51,6 +54,8 @@ METHOD_COLORS = {"SL": "#0173B2", "LFR": "#DE8F05", "TF-C": "#029E73"}
 SCEN_PRETTY = {"in": "In-domain (especialista)", "comb": "Combined (multi-domínio)",
                "cross": "Cross-domain (transfer)"}
 SETTING_SHORT = {"in": "In-domain", "comb": "Combined", "cross": "Cross-domain"}
+# ordem dos datasets nas matrizes de transfer (mesma de common.DATASETS)
+DATASETS = ["UCI", "MotionSense", "KuHar", "WISDM", "RealWorld_thigh", "RealWorld_waist"]
 
 
 def load() -> pd.DataFrame:
@@ -661,6 +666,99 @@ def fig_cross_by_target(df):
     print("wrote", OUT / "fig_cross_domain_por_target.png")
 
 
+# ------------------------------------------ matrizes de transfer fonte × alvo
+_MASK = np.eye(len(DATASETS), dtype=bool)  # diagonal (in-domain) mascarada
+
+
+def _mat_ms(d):
+    """Matriz fonte×alvo: (média, dp entre seeds) da acurácia (%)."""
+    d = d[d.source.isin(DATASETS)]
+    m = (d.groupby(["source", "target"])["test_acc"].mean() * 100).unstack()
+    per_seed = d.groupby(["source", "target", "seed"])["test_acc"].mean()
+    s = (per_seed.groupby(["source", "target"]).std(ddof=1) * 100).unstack()
+    ix = dict(index=DATASETS, columns=DATASETS)
+    return m.reindex(**ix), s.reindex(**ix)
+
+
+def _delta_seed(df, method, protocol, n_shots):
+    """Δ(método − SL) por (fonte, alvo, seed): média sobre encoders e depois diferença."""
+    def per_seed(mth, proto):
+        d = df[(df.method == mth) & (df.protocol == proto) & (df.n_shots == n_shots)
+               & (df.source.isin(DATASETS))]
+        return d.groupby(["source", "target", "seed"])["test_acc"].mean()
+    return (per_seed(method, protocol) - per_seed("SL", "sl")) * 100
+
+
+def _annot(m, s, delta=False):
+    a = np.full(m.shape, "", dtype=object)
+    for i in range(m.shape[0]):
+        for j in range(m.shape[1]):
+            mv, sv = m.iat[i, j], s.iat[i, j]
+            if pd.notna(mv):
+                head = f"{mv:+.1f}" if delta else f"{mv:.1f}"
+                a[i, j] = head + (f"\n±{sv:.1f}" if pd.notna(sv) else "")
+    return a
+
+
+def _tick_axes(ax, first):
+    ax.set_xlabel("Target (alvo)")
+    ax.set_ylabel("Source (fonte)" if first else "")
+    ax.set_yticklabels(ax.get_yticklabels(), rotation=0, fontsize=8)
+    ax.tick_params(labelsize=8)
+
+
+def fig_transfer_matrix(df, protocol="finetune", n_shots="full"):
+    """Acurácia de transfer out-domain fonte→alvo, por método (SL, LFR, TF-C)."""
+    series = [("SL", "sl"), ("LFR", protocol), ("TF-C", protocol)]
+    mats = [_mat_ms(df[(df.method == mth) & (df.protocol == pr) & (df.n_shots == n_shots)])
+            for mth, pr in series]
+    vals = np.concatenate([np.asarray(m, float)[~_MASK] for m, _ in mats])
+    vmin, vmax = np.nanmin(vals), np.nanmax(vals)
+    fig, axes = plt.subplots(1, 3, figsize=(16.5, 5.4))
+    for ax, (mth, _), (m, s) in zip(axes, series, mats):
+        sns.heatmap(m, mask=_MASK, annot=_annot(m, s), fmt="", cmap="viridis",
+                    vmin=vmin, vmax=vmax, square=True, linewidths=0.5, ax=ax,
+                    cbar=(ax is axes[-1]), cbar_kws={"label": "Acurácia (%)"},
+                    annot_kws={"fontsize": 7})
+        ax.set_title(mth, fontsize=12)
+        _tick_axes(ax, ax is axes[0])
+    fig.suptitle("Transfer out-domain fonte → alvo — acurácia (%), finetune @ 100% dos rótulos\n"
+                 "(média ± dp entre seeds; 4 encoders × 4 seeds; diagonal in-domain omitida)",
+                 fontsize=12, y=1.03)
+    fig.tight_layout()
+    fig.savefig(OUT / "fig_transfer_matrix_acc.png", dpi=300, bbox_inches="tight")
+    plt.close(fig)
+    print("wrote", OUT / "fig_transfer_matrix_acc.png")
+
+
+def fig_transfer_delta(df, protocol="finetune", n_shots="full"):
+    """Δ(SSL − SL) no transfer out-domain fonte→alvo, para LFR e TF-C."""
+    mats = []
+    for mth in ["LFR", "TF-C"]:
+        ds = _delta_seed(df, mth, protocol, n_shots)
+        ix = dict(index=DATASETS, columns=DATASETS)
+        m = ds.groupby(["source", "target"]).mean().unstack().reindex(**ix)
+        s = ds.groupby(["source", "target"]).std(ddof=1).unstack().reindex(**ix)
+        mats.append((mth, m, s))
+    peak = np.nanmax([np.abs(np.asarray(m, float)[~_MASK]).max() for _, m, _ in mats])
+    vmax = max(5.0, np.ceil(peak / 5) * 5)
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5.4))
+    for ax, (mth, m, s) in zip(axes, mats):
+        sns.heatmap(m, mask=_MASK, annot=_annot(m, s, delta=True), fmt="", cmap="RdBu",
+                    center=0, vmin=-vmax, vmax=vmax, square=True, linewidths=0.5, ax=ax,
+                    cbar=(ax is axes[-1]), cbar_kws={"label": "Δ pp"},
+                    annot_kws={"fontsize": 7})
+        ax.set_title(f"Δ({mth} − SL)", fontsize=12)
+        _tick_axes(ax, ax is axes[0])
+    fig.suptitle("Ganho do SSL no transfer out-domain — Δ(SSL − SL) fonte → alvo, finetune @ 100%\n"
+                 "(azul = SSL melhor; média ± dp entre seeds; 4 encoders × 4 seeds; diagonal omitida)",
+                 fontsize=12, y=1.03)
+    fig.tight_layout()
+    fig.savefig(OUT / "fig_transfer_matrix_delta.png", dpi=300, bbox_inches="tight")
+    plt.close(fig)
+    print("wrote", OUT / "fig_transfer_matrix_delta.png")
+
+
 def main():
     df = load()
     c2t = load_c2t()
@@ -691,6 +789,8 @@ def main():
     fig_c2t(c2t_mean, c2t_std)
     fig_c2t(c2t_mean, c2t_std, method="LFR", fname="fig_lfr_comb2target.png",
             headline="pré-treino multi-domínio ~neutro no próprio domínio")
+    fig_transfer_matrix(df)
+    fig_transfer_delta(df)
 
 
 if __name__ == "__main__":
