@@ -1,0 +1,35 @@
+\documentclass[border=8pt,varwidth=\maxdimen]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{booktabs,multirow}
+\usepackage{newtxtext,newtxmath}
+\begin{document}
+
+\centering
+{\large\bfseries Eficiência de dados — full fine-tuning}\\[2pt]
+{\scriptsize Acurácia (\%), média $\pm$ dp entre seeds, por regime de rótulos. \textbf{Negrito} = melhor por coluna; $\Delta$ = ganho vs.\ SL (pp).}\\[6pt]
+\begin{tabular}{llcccc}
+\toprule
+& & \multicolumn{4}{c}{Acurácia (\%)}\\
+\cmidrule(lr){3-6}
+Cenário & Método & 1-shot & 10-shot & 100-shot & 100\%\\
+\midrule
+\multirow{5}{*}{In-domain}
+ & SL        & 41{,}87 $\pm$ 2{,}51 & 58{,}20 $\pm$ 1{,}14 & 74{,}00 $\pm$ 1{,}57 & 76{,}59 $\pm$ 0{,}76\\
+ & LFR       & 43{,}10 $\pm$ 4{,}15 & 62{,}39 $\pm$ 1{,}42 & 74{,}48 $\pm$ 1{,}25 & 77{,}86 $\pm$ 1{,}27\\
+ & TF-C      & \textbf{44{,}69 $\pm$ 4{,}36} & \textbf{70{,}36 $\pm$ 0{,}73} & \textbf{79{,}87 $\pm$ 0{,}58} & \textbf{82{,}82 $\pm$ 0{,}38}\\
+\cmidrule(lr){2-6}
+ & \textit{$\Delta$ LFR$-$SL} & $+$1{,}23 & $+$4{,}18 & $+$0{,}48 & $+$1{,}27\\
+ & \textit{$\Delta$ TF-C$-$SL} & $+$2{,}82 & $+$12{,}15 & $+$5{,}87 & $+$6{,}24\\
+\midrule
+\multirow{5}{*}{Cross-domain}
+ & SL        & 32{,}09 $\pm$ 2{,}06 & 39{,}88 $\pm$ 0{,}92 & 44{,}92 $\pm$ 0{,}66 & 46{,}26 $\pm$ 0{,}30\\
+ & LFR       & \textbf{33{,}21 $\pm$ 3{,}05} & 41{,}95 $\pm$ 0{,}97 & 45{,}59 $\pm$ 0{,}66 & 46{,}46 $\pm$ 1{,}30\\
+ & TF-C      & 33{,}18 $\pm$ 2{,}65 & \textbf{45{,}41 $\pm$ 0{,}56} & \textbf{48{,}60 $\pm$ 0{,}72} & \textbf{49{,}28 $\pm$ 0{,}30}\\
+\cmidrule(lr){2-6}
+ & \textit{$\Delta$ LFR$-$SL} & $+$1{,}11 & $+$2{,}07 & $+$0{,}67 & $+$0{,}21\\
+ & \textit{$\Delta$ TF-C$-$SL} & $+$1{,}08 & $+$5{,}54 & $+$3{,}68 & $+$3{,}02\\
+\bottomrule
+\end{tabular}
+
+\end{document}
