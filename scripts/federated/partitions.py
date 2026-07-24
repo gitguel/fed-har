@@ -1,5 +1,12 @@
 """Particionamento dos dados em clientes para a simulação federada (Flower).
 
+⚠️ DEPRECATED (2026-07-21) — os cenários CROSS-SILO (1 dataset/cliente) foram
+abandonados como desenho/controle. Mantidos só como resultado PRELIMINAR/motivação
+(o custo ~8 pp de domain shift medido é citado como motivação, não contribuição).
+NÃO deletar — `results/federated_eval.csv` segue válido como medida preliminar.
+Eixo ativo agora: CROSS-DEVICE (clientes = usuários) — ver `partition_users.py`,
+`docs/plano_fedssl_simulado.md` e `docs/analise_domain_shift.md`.
+
 Define os cenários de particionamento do plano federado, sempre reusando
 `common.make_datamodule` para ler os CSVs do DAGHAR — exatamente o mesmo
 pipeline dos baselines supervisionados.

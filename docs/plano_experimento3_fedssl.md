@@ -1,5 +1,12 @@
 # Plano de implementação — Experimento 3: pré-treino SSL federado + finetuning federado (FedAvg-SSL)
 
+> **⚠️ ATUALIZAÇÃO 2026-07-21 — PIVÔ cross-silo → cross-device.** Além do STATUS
+> abaixo (2026-07-13, sem Flower no pré-treino), a federação **cross-silo** foi
+> **abandonada como desenho e como controle** (decisão 2026-07-21). Os ~8 pp de
+> domain shift viram **preliminar/motivação**; o controle honesto passa a ser
+> **Δ(cross-domain − in-domain)** no eixo **cross-device**. Ver
+> `docs/analise_domain_shift.md` e `docs/plano_fedssl_simulado.md`.
+
 > **STATUS (2026-07-13): parcialmente superseded.** Por decisão do orientador,
 > o pré-treino federado NÃO usará Flower — será uma simulação exata de FedAvg
 > (loop Python sobre o pipeline SSL centralizado), com o eixo novo de partição

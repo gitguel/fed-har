@@ -1,5 +1,9 @@
 """Estratégia FedAvg + avaliação centralizada por domínio.
 
+⚠️ DEPRECATED (2026-07-21) — parte da pilha federada CROSS-SILO, abandonada como
+desenho/controle (agora só resultado preliminar/motivação). Eixo ativo:
+CROSS-DEVICE — ver `partition_users.py` e `docs/plano_fedssl_simulado.md`.
+
 A cada rodada (incluindo a rodada 0, com os pesos iniciais), o servidor injeta
 os pesos globais num modelo recém-construído e avalia nos 6 test sets de domínio
 do DAGHAR, reusando a função `evaluate` de `scripts/eval_transfer.py`

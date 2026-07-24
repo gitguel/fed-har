@@ -1,5 +1,16 @@
 # Contribuições do trabalho: pontos fortes, fracos e preparação para a orientação
 
+> **⚠️ ATUALIZAÇÃO 2026-07-21 — PIVÔ cross-silo → cross-device.** A federação
+> **cross-silo** (1 dataset/cliente; cenários 1–8) foi **abandonada como desenho e
+> como controle**. Impacto direto nesta análise: a força **F1 ("desenho com grupo
+> de controle")** e a resposta a **W2 (FedBN)** falavam do controle cross-silo
+> (cenário 1 vs 2 vs ablação); esse controle específico é **superseded** — o
+> controle honesto agora é **Δ(cross-domain − in-domain)** no eixo **cross-device**
+> (clientes = usuários). Os ~8 pp viram **motivação preliminar**, não a
+> contribuição. O espírito de F1 (atribuição causal controlada) permanece, mas na
+> nova topologia. Ver `docs/analise_domain_shift.md` e
+> `docs/plano_fedssl_simulado.md`.
+
 *Escrito em 2026-07-07, consolidando a análise desta sessão (verificação de
 ineditismo em 4 grafos, mapeamento do estado da arte de F-SSL, auditoria do
 que já está medido). Objetivo: te deixar munido para a conversa com o

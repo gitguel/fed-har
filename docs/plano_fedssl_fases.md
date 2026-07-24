@@ -1,5 +1,13 @@
 # Plano de execução FedSSL em fases — começar 2026-07-16
 
+> **⚠️ ATUALIZAÇÃO 2026-07-21 — PIVÔ cross-silo → cross-device.** A federação
+> **cross-silo** (cenários 1–8) foi **abandonada como desenho e como controle**. Os
+> ~8 pp de domain shift viram **preliminar/motivação**. Eixo ativo: **cross-device**
+> (clientes = usuários, `partition_users.py`); controle honesto =
+> **Δ(cross-domain − in-domain)**; baseline supervisionado federado = 3 experimentos
+> cross-device (in-domain RW_thigh, in-domain MotionSense, cross-domain
+> RW_thigh+MotionSense). Ver `docs/analise_domain_shift.md`.
+
 *Escrito em 2026-07-15. Operacionaliza `plano_fedssl_simulado.md` (que define
 o design: FedAvg manual, Modo A one-shot / Modo B multi-round, spikes S0–S3 e
 gates G-EQ/G-IID). Decisão desta sessão (Miguel): depois do smoke test,

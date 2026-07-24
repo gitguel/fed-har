@@ -1,5 +1,10 @@
 """Entrypoint da simulação federada FedAvg (Flower) supervisionada.
 
+⚠️ DEPRECATED (2026-07-21) — a federação CROSS-SILO (cenários 1–8) foi abandonada
+como desenho/controle. Mantida só como resultado PRELIMINAR/motivação; NÃO deletar
+`results/federated_eval.csv`. Eixo ativo: CROSS-DEVICE (clientes = usuários) — ver
+`partition_users.py`, `docs/plano_fedssl_simulado.md` e `docs/analise_domain_shift.md`.
+
 Sobe uma simulação Flower com `num_clients` clientes (um por shard, conforme o
 cenário de `partitions.py`), agrega via FedAvg e avalia centralizadamente nos 6
 test sets de domínio do DAGHAR a cada rodada. Grava (incrementalmente) em

@@ -1,5 +1,10 @@
 # Auditoria de código e hiperparâmetros vs benchmark (2026-07-07)
 
+> **⚠️ Nota 2026-07-21:** menções à federação **cross-silo** aqui referem-se ao
+> desenho antigo, **abandonado como controle** (agora preliminar/motivação); eixo
+> ativo é **cross-device**. As conclusões de auditoria de código/hiperparâmetros
+> permanecem válidas. Ver `docs/analise_domain_shift.md`.
+
 *Revisão sistemática feita em 2026-07-07 a pedido do Miguel: (a) caça a bugs em
 todo o código experimental; (b) re-auditoria de hiperparâmetros contra o
 benchmark oficial (da Luz et al., IEEE Access 2026), cobrindo pré-treino (LFR e
