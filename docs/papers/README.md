@@ -53,9 +53,9 @@ Baixar via VPN/proxy da Unicamp (IEEE Xplore / ACM DL / SpringerLink):
 | Código | Onda | Paper | Onde | Nota |
 |---|---|---|---|---|
 | **B1** | 1 | da Luz+, *Benchmarking Encoders and SSL for HAR*, IEEE Access 2026 | IEEE Xplore, DOI 10.1109/ACCESS.2026.3669412 | **Inegociável** e o mais importante (seu protocolo/baselines). IEEE Access é *gold open access* — o PDF é livre no Xplore, mas o Xplore bloqueia download automatizado. Baixar manual. Checkpoints no [Zenodo 19301058](https://zenodo.org/records/19301058) |
-| **B5** | 2 | Haresamudram+, *SSL for Accelerometer-based HAR: A Survey*, ACM IMWUT 2024 | ACM DL, DOI 10.1145/3699767 | Sem arXiv |
+| **B5** | 2 | **Logacjov**, *SSL for Accelerometer-based HAR: A Survey*, ACM IMWUT 2024 | ACM DL, DOI 10.1145/3699767 | Sem arXiv; **CC-BY (OA)**. ⚠️ autor corrigido 2026-07-24: é **Logacjov** (DBLP `journals/imwut/Logacjov24`), não Haresamudram. Baixado → `B5_Logacjov_survey.pdf` |
 | **B6** | 2 | Rodrigues da Silva+, *Impact of Pre-training Datasets (CPC)*, BRACIS 2024 | SpringerLink, DOI 10.1007/978-3-031-79035-5_21 | Trabalho do grupo |
-| **C8** | 1 | *FedST* (ACM MM 2024) + *FedOST* (IEEE TMC 2026) | ACM DL / IEEE Xplore | **Inegociável** — vizinho de tempo-frequência em FL a distinguir |
+| **C8** | 1 | *FedST* (Wu+, ACM MM 2024) + *FedOST* (IEEE TMC 2026) | ACM DL / IEEE Xplore | **Inegociável** — vizinho de tempo-frequência em FL a distinguir. FedST baixado (`C8_FedST.pdf`), DOI 10.1145/3664647.3680733; é **FL supervisionado** (pFL) de classificação de TS, não pré-treino SSL. FedOST (TMC) ainda pendente. |
 
 Se algum desses estiver inacessível mesmo com VPN, peça ao coautor/orientador
 (B1, B6 são do próprio grupo H-IAAC).
