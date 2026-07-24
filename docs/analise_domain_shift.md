@@ -126,17 +126,16 @@ ganho é intra-grupo perna:
 - **Mas `combined` como pré-treino + finetune no alvo (comb2target) ganha.**
   `pretrain(combined) → finetune(target)`, full-ft, **vs SL in-domain**: **TF-C
   supera o in-domain em todos os 6 alvos** (+0.03 a +0.13; média 0.833 vs 0.766)
-  e **LFR não degrada vs SL in-domain** (KuHar exceção, −0.058) — mas **fica
-  abaixo do pré-treino supervisionado no `combined`** (ver o skyline logo
-  adiante). Isto é o argumento a favor de juntar dados não-rotulados de vários
+  e **LFR não degrada vs SL in-domain** (KuHar exceção, −0.058); contra o
+  skyline supervisionado o LFR **empata no regime `full`** e fica abaixo só em
+  baixo-dado (§4.1). Isto é o argumento a favor de juntar dados não-rotulados de vários
   domínios no pré-treino — exatamente a proposta de valor do SSL federado.
 
 ## 4.1 O skyline SL-`combined` (ablação do comb2target)
 
 *Medido em 2026-07-23/24 por `scripts/ssl/sl_comb2target_eval.py`; cache
-`results/sl_comb2target_eval_transfer.csv`. **Números abaixo são PARCIAIS**
-(2832 das 3456 células; falta o encoder `rnn` nas seeds 1–3, em execução) e
-serão reprocessados quando a grade fechar.*
+`results/sl_comb2target_eval_transfer.csv`. **Grade completa: 3456/3456 células**
+(3 encoders × 6 fontes × 4 seeds × 2 protocolos × 4 regimes × 6 alvos), sem NaN.*
 
 Para atribuir o ganho do `comb2target` ao **SSL** e não à etapa
 `pré-treino → especialização no alvo`, o comparador é o mesmo pipeline com o
@@ -157,18 +156,31 @@ modelo supervisionada. Além disso, ele é **inviável sob a premissa do eixo
 federado** (dado não-rotulado abundante, rótulo escasso) — logo não compete
 com o SSL, ele o limita superiormente.
 
-Acurácia média, in-domain (`source==target`), full finetuning, sobre as 2832
-células comuns aos três métodos:
+Acurácia média, in-domain (`source==target`), full finetuning, média sobre
+3 encoders × 6 alvos × 4 seeds:
 
 | shots | SL-`combined` (skyline) | LFR | TF-C | Δ(LFR) | Δ(TF-C) |
 |---|---|---|---|---|---|
-| 1 | **0.528** | 0.396 | 0.413 | −0.131 | −0.115 |
-| 10 | 0.692 | 0.581 | **0.717** | −0.111 | **+0.024** |
-| 100 | 0.765 | 0.714 | **0.833** | −0.051 | **+0.068** |
-| full | 0.793 | 0.760 | **0.856** | −0.034 | **+0.063** |
+| 1 | **0.503** | 0.410 | 0.439 | −0.093 | −0.064 |
+| 10 | 0.672 | 0.591 | **0.699** | −0.081 | **+0.028** |
+| 100 | 0.748 | 0.721 | **0.807** | −0.027 | **+0.058** |
+| full | 0.775 | 0.772 | **0.833** | **−0.003** | **+0.058** |
+
+Desvio-padrão **entre seeds** no regime `full` (convenção da apresentação):
+SL-`combined` 0.775 ± 0.002, LFR 0.772 ± 0.008, TF-C 0.833 ± 0.002.
+
+**No regime `full` o LFR EMPATA com o skyline** (−0.003, dentro do dp entre
+seeds) — não fica abaixo. O déficit só aparece em baixo-dado (1 e 10 shots) e,
+mesmo na média `full`, é inteiramente carregado pelo **KuHar**: por alvo, o LFR
+**supera o skyline em 4 dos 6** (UCI +0.029, WISDM +0.038, RW_waist +0.012,
+MotionSense +0.010) e só perde em KuHar (−0.105) e RW_thigh (−0.004) — e o
+KuHar já está registrado como outlier fraco em §4. O TF-C vence em **6/6**
+(+0.039 a +0.083).
 
 Em cross-domain (`source≠target`) o skyline fica acima dos dois métodos SSL em
-todos os regimes (Δ TF-C −0.03 a −0.15).
+todos os regimes (Δ TF-C −0.035 a −0.103; Δ LFR −0.073 a −0.100) — esperado,
+já que o pré-treino supervisionado multi-domínio produz representação já
+alinhada a classes, o que é exatamente a vantagem que 36.8k rótulos compram.
 
 **Como reportar estes números (regra de redação):**
 
@@ -176,11 +188,12 @@ todos os regimes (Δ TF-C −0.03 a −0.15).
    supervisão** in-domain a partir de 10 shots (+0.02 a +0.07, 6/6 alvos),
    gastando **zero rótulo** no pré-treino. Vencer um baseline enviesado contra
    você é evidência **mais forte** que vencer o SL in-domain, não mais fraca.
-2. Para o LFR, reportar a **medição** ("fica abaixo do skyline supervisionado"),
-   **nunca o veredito** ("LFR perde" / "LFR degrada"). A comparação não é
-   pareada em rótulos, então ela não sustenta juízo de mérito sobre o método —
-   sustenta apenas que o LFR não alcança pré-treino supervisionado com 36.8k
-   rótulos, o que é quase esperado.
+2. Para o LFR, reportar a **medição** (`full`: **empata** com o skyline, −0.003
+   dentro do dp; baixo-dado: fica abaixo), **nunca o veredito** ("LFR perde" /
+   "LFR degrada"). A comparação não é pareada em rótulos, então ela não
+   sustenta juízo de mérito sobre o método. Enunciado defensável: *"com dados
+   rotulados suficientes no alvo, o LFR alcança o pré-treino supervisionado
+   gastando zero rótulo no pré-treino; em baixo-dado, não."*
 3. **A ablação é um pacote**: entra inteira (TF-C favorável + LFR desfavorável)
    ou fica inteira fora por escopo. Reportar só a metade favorável seria
    cherry-picking, já que as duas vêm da mesma medição.
