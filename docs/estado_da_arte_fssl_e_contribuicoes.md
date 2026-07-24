@@ -1,5 +1,13 @@
 # F-SSL: estado da arte, verificação da contribuição C3 e a questão da defesa
 
+> **⚠️ ATUALIZAÇÃO 2026-07-21 — PIVÔ cross-silo → cross-device.** A federação
+> **cross-silo** (1 dataset/cliente) foi **abandonada como desenho e como controle**
+> (decisão com o orientador). Os ~8 pp de custo de domain shift viram
+> **preliminar/motivação**, não a contribuição. Eixo ativo: **cross-device**
+> (clientes = usuários); controle honesto = **Δ(cross-domain − in-domain)**. A
+> verificação de ineditismo de LFR/TF-C federados permanece válida. Ver
+> `docs/analise_domain_shift.md` e `docs/plano_fedssl_simulado.md`.
+
 *Escrito em 2026-07-07 em resposta a 5 pontos levantados (modelo em uso;
 posicionamento na linha do HIAAC; verificação rigorosa do claim C3;
 levantamento do estado da arte de Federated Self-Supervised Learning; e a

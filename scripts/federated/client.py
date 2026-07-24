@@ -1,5 +1,9 @@
 """Cliente Flower (NumPyClient) para a simulação federada supervisionada.
 
+⚠️ DEPRECATED (2026-07-21) — parte da pilha federada CROSS-SILO, abandonada como
+desenho/controle (agora só resultado preliminar/motivação). Eixo ativo:
+CROSS-DEVICE — ver `partition_users.py` e `docs/plano_fedssl_simulado.md`.
+
 Cada cliente treina localmente um dos encoders supervisionados (resnetse5,
 cnnpff, rnn) no seu shard de dados, por `local_epochs` épocas, e devolve os
 pesos para agregação FedAvg no servidor. O laço de treino é um loop torch leve

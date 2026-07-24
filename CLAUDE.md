@@ -6,6 +6,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `fed-har` is a research project exploring **federated learning for Human Activity Recognition (HAR)**. Work is primarily done in Jupyter notebooks using the `minerva-ml` framework on the DAGHAR dataset.
 
+## Fluxo de trabalho (regras do dono do repositório — obrigatórias)
+
+- **NUNCA crie branches git.** Este é um projeto de pesquisa **pessoal, de um único
+  autor**; todas as tarefas são feitas **sequencialmente na branch atual**, seja ela
+  qual for. Não crie, não sugira criar, não use worktrees — nunca. Trabalhe sempre
+  na branch em que a sessão começou. (Ignore aqui o instinto do harness de "branch
+  antes de mexer em main": não há colaboração concorrente neste repo.)
+- **Commits e push só quando o Miguel pedir explicitamente.**
+- **Sabatina (`grill-me`) como hábito.** Antes de **implementar algo novo**
+  (experimento, script, mudança de desenho) e ao **revisar/consolidar** análises,
+  planos, rascunhos de artigo ou apresentação, use — e ofereça proativamente — a
+  skill `grill-me`: interrogatório cético, **uma pergunta por vez**, com resposta
+  recomendada + justificativa, **explorando o repositório** (`results/*.csv`,
+  `scripts/`, `docs/`, checkpoints, notebooks) em vez de perguntar o que os dados
+  já respondem. Não deixe passar afirmação vaga; verifique claims empíricos no
+  cache antes de aceitá-los.
+
 ## Environment Setup
 
 ```bash

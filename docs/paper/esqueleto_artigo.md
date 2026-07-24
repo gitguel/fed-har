@@ -1,5 +1,17 @@
 # Esqueleto do artigo — SSL Federado para Mitigação de Heterogeneidade de Domínio em HAR
 
+> **⚠️ ATUALIZAÇÃO 2026-07-21 — PIVÔ cross-silo → cross-device.** A federação
+> **cross-silo** (1 dataset/cliente; cenários 1–8 do `federated_eval.csv`) foi
+> **abandonada como desenho e como controle** (decisão com o orientador). Os ~8 pp
+> de custo de domain shift medidos ali viram **resultado PRELIMINAR/motivação**, não
+> a contribuição. Eixo ativo: **cross-device** (clientes = usuários,
+> `partition_users.py`); o controle honesto do custo de domain shift passa a ser
+> **Δ(cross-domain − in-domain)**. Novo baseline supervisionado federado = 3
+> experimentos cross-device (in-domain RW_thigh, in-domain MotionSense, cross-domain
+> RW_thigh+MotionSense). Fonte de verdade: `docs/analise_domain_shift.md`. Leia os
+> trechos de cross-silo abaixo (abstract, RQ1, contribuição 1, III-A/III-E, IV-C)
+> sob esta luz.
+
 *Esqueleto de artigo de conferência (formato IEEE, duas colunas, ~8 páginas).
 Escrito em português para redação interna; tradução para inglês na fase de
 submissão. Placeholders de resultados apontam para os CSVs de `results/` que
@@ -90,6 +102,9 @@ sem perder o benefício — e a que custo de comunicação? Contribuições:
 1. Quantificação controlada do custo do domain shift em FedAvg cross-silo
    sobre 6 datasets reais de HAR padronizados (cenário non-IID por domínio vs
    controle IID com volume idêntico), com 4 encoders × 4 seeds.
+   **[2026-07-21: cross-silo reclassificado como PRELIMINAR — a quantificação
+   controlada migra para o eixo cross-device, com controle honesto
+   Δ(cross-domain − in-domain); ver `docs/analise_domain_shift.md`.]**
 2. Comparação sistemática de LFR e TF-C sobre 4 encoders em regimes de dados
    rotulados de 1 a 100% (grade centralizada validada contra o benchmark
    publicado), estendida com a matriz de transferência 7 fontes × 6 alvos.

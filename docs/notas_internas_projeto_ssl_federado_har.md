@@ -1,5 +1,16 @@
 # Notas Internas — Projeto SSL Federado para HAR
 
+> **⚠️ ATUALIZAÇÃO 2026-07-21 — PIVÔ cross-silo → cross-device.** O escopo oficial
+> abaixo fala em **federação cross-silo com 6 clientes (1 por dataset)**; por decisão
+> com o orientador (2026-07-21) esse eixo foi **abandonado como desenho e como
+> controle**. Os ~8 pp de custo de domain shift medidos no cross-silo viram
+> **resultado PRELIMINAR/motivação**. Eixo ativo: **cross-device** (clientes =
+> usuários, `partition_users.py`); controle honesto do custo de domain shift =
+> **Δ(cross-domain − in-domain)**; baseline supervisionado federado = 3 experimentos
+> cross-device (in-domain RW_thigh, in-domain MotionSense, cross-domain
+> RW_thigh+MotionSense). Ver `docs/analise_domain_shift.md` e
+> `docs/plano_fedssl_simulado.md`.
+
 *Documento de uso interno.* Referência operacional do projeto: o que está oficialmente prometido, o que já foi implementado, o que pretendemos fazer se houver tempo, e o que fica como ideia para expansões futuras. Atualizar conforme o projeto avança.
 
 ---

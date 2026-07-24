@@ -1,5 +1,10 @@
 # Plano de implementação — Encoder TS-TCC + TF-C (fechamento da parte centralizada)
 
+> **⚠️ Nota 2026-07-21:** o eixo federado migrou de **cross-silo → cross-device**;
+> a grade federada cross-silo (incl. os 32 runs de tstcc) é agora
+> PRELIMINAR/motivação, não controle. A parte centralizada deste plano (tstcc + TF-C)
+> segue válida. Ver `docs/analise_domain_shift.md` e `docs/plano_fedssl_simulado.md`.
+
 *Escrito em 2026-07-06. Baseado na auditoria dos YAMLs oficiais do
 [H-IAAC/benchmarking-encoders-ssl-har](https://github.com/H-IAAC/benchmarking-encoders-ssl-har)
 e nas medições das grades já rodadas (LFR v1, comb→target). Complementa a

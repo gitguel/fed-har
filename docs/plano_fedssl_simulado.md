@@ -1,5 +1,16 @@
 # Plano — Pré-treino federado SIMULADO (sem Flower) + partição cross-device
 
+> **⚠️ ATUALIZAÇÃO 2026-07-21 — cross-silo abandonado; cross-device é o eixo único.**
+> A federação **cross-silo** (1 dataset/cliente; cenários 1–8 do `federated_eval.csv`)
+> foi **abandonada como desenho e como controle** (decisão com o orientador). Os
+> ~8 pp de domain shift viram **preliminar/motivação**. Consequência para ESTE doc:
+> o modo de partição **`silo`** e a **Onda B1 (silo, all6)** também são cross-silo →
+> **superseded pelo modo `device-<dataset>`** (cross-device). O controle honesto do
+> custo de domain shift passa a ser **Δ(cross-domain − in-domain)**; o baseline
+> supervisionado federado = 3 experimentos cross-device (in-domain RW_thigh,
+> in-domain MotionSense, cross-domain RW_thigh+MotionSense). Ver
+> `docs/analise_domain_shift.md`.
+
 *Escrito em 2026-07-13, a partir da conversa do Miguel com o orientador
 (mesma data). Duas ideias novas: (1) cenário **cross-device** particionando
 por usuário ("cobaia"); (2) **não usar Flower no pré-treino** — simular o

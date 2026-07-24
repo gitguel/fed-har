@@ -1,5 +1,14 @@
 # scripts/federated/ — Federação cross-silo (Flower)
 
+> **⚠️ DEPRECATED como desenho/controle (2026-07-21).** A federação **cross-silo**
+> desta pilha (cenários 1–8) foi **abandonada** (decisão com o orientador). O
+> `results/federated_eval.csv` (96 runs, ~8 pp de domain shift) **não é deletado**:
+> vira **resultado PRELIMINAR/motivação**, não a contribuição. O eixo ativo agora é
+> **cross-device** (clientes = usuários), via `partition_users.py` +
+> `scripts/ssl/pretrain_fed.py` (a fazer) — design em
+> `docs/plano_fedssl_simulado.md` e análise em `docs/analise_domain_shift.md`. O
+> **finetuning federado** (Exp. 2/3) permanece no Flower.
+
 Integração com **Flower** (`flwr` 1.31 + `ray` 2.55) na configuração cross-silo
 do projeto: **FedAvg** por simulação local, avaliação **centralizada por domínio**
 (acurácia + F1-macro) e **custo de comunicação**. Reusa todo o pipeline dos
@@ -77,6 +86,13 @@ iniciais (sem custo de comunicação). `uplink_bytes`/`downlink_bytes` = bytes d
 
 ## A fazer (próximos passos do plano)
 
-- Grade completa: Cenários 1 e 2 × 3 encoders × 4 seeds, R≈50.
-- Cenários 3..8 (ablação IID intra-domínio): código já pronto, rodar se houver tempo.
-- Integração SSL → finetuning federado (Experimentos 2 e 3 do plano oficial).
+> ⚠️ A grade cross-silo (cenários 1–8) está **concluída** e **deprecada como
+> controle**. Os próximos passos migraram para o eixo **cross-device**, fora desta
+> pilha Flower cross-silo:
+
+- **Baseline supervisionado federado cross-device** (novo controle do Fed-SSL):
+  3 experimentos — (1) in-domain RW_thigh, (2) in-domain MotionSense, (3)
+  cross-domain RW_thigh+MotionSense — usando `partition_users.py`. Controle honesto
+  do custo de domain shift = **Δ(cross-domain − in-domain)**. Design em
+  `docs/plano_fedssl_simulado.md` / `docs/plano_fedssl_fases.md`.
+- Finetuning federado a partir de checkpoint SSL (Exp. 2/3) — permanece no Flower.

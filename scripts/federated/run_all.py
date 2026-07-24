@@ -1,5 +1,10 @@
 """Driver da grade federada: roda `run_federated.py` para cada combinação.
 
+⚠️ DEPRECATED (2026-07-21) — a grade federada CROSS-SILO (cenários 1–8) foi
+abandonada como desenho/controle. Mantida só como resultado PRELIMINAR/motivação.
+Eixo ativo: CROSS-DEVICE (clientes = usuários) — ver `partition_users.py`,
+`docs/plano_fedssl_simulado.md` e `docs/analise_domain_shift.md`.
+
 Itera sobre (encoder × cenário × seed). Cada combinação roda como um
 **subprocesso isolado** — assim o Ray é reinicializado por run, sem conflito de
 estado global entre simulações.
