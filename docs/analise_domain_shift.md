@@ -52,7 +52,16 @@ Notas de fonte:
   confundidor na visão que usamos**; ela importa só como característica de
   realismo (ex.: WISDM 20 Hz é o mais pobre em resolução temporal na origem).
 - Os rótulos são projetados nas 6 classes padrão do DAGHAR
-  {Sit, Stand, Walk, Stair-up, Stair-down, Run}; UCI e RealWorld não têm "run".
+  {Sit, Stand, Walk, Stair-up, Stair-down, Run}. ⚠️ **Correção (2026-07-24,
+  medido em todos os splits da `standardized_view`):** a coluna "Ativ. (padrão)"
+  acima reflete a Tab. 2 do DAGHAR **original**; na visão padronizada que usamos,
+  a presença de classes é: **UCI = 5 (sem Run)**; **WISDM = 4 (Sit/Stand/Walk/Run,
+  sem Stair-up/Stair-down)**; **RealWorld_thigh, RealWorld_waist, MotionSense e
+  KuHar = 6 classes**. Ou seja, **RealWorld TEM "run"** na visão padronizada — a
+  afirmação anterior ("UCI e RealWorld não têm run") estava errada para o
+  RealWorld. Isto importa para o cross-domain RW_thigh+MotionSense: **ambos com as
+  6 classes balanceadas ⇒ sem mismatch de conjunto de classes** (ver
+  `desenho_cross_device.md`).
 
 ## 2. Agrupamento por posição do sensor
 
