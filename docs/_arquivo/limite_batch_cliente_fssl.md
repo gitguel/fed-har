@@ -1,3 +1,9 @@
+> **📦 ARQUIVADO em 2026-07-27.** Achado do piso de batch (2026-07-24). **Absorvido em `../plano_fedssl.md §3`** (o achado e suas consequências) e **`../estado_da_arte.md §3.4`** (o posicionamento na literatura e a conferência de ineditismo). Mantido como registro da investigação original.
+>
+> Índice dos documentos vivos: `../README.md`.
+
+---
+
 # O cliente mínimo viável em SSL federado é um *batch*, não uma amostra
 
 *Escrito em 2026-07-24. Registra um achado que surgiu na sabatina do desenho

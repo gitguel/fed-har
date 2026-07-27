@@ -1,3 +1,9 @@
+> **📦 ARQUIVADO em 2026-07-27.** Referência operacional interna (snapshot de 2026-06-30). **O §2 e o checklist §8 estão desatualizados em ~6 números** (falam em 96 runs/3 encoders/504 linhas; hoje são 128 runs/4 encoders/2.688 linhas). Para o estado real use `../README.md` e `scripts/analysis/cache_status.py`. Mantido pelo log de decisões §6 e pela validação LFR v1 vs paper §9.
+>
+> Índice dos documentos vivos: `../README.md`.
+
+---
+
 # Notas Internas — Projeto SSL Federado para HAR
 
 > **⚠️ ATUALIZAÇÃO 2026-07-21 — PIVÔ cross-silo → cross-device.** O escopo oficial

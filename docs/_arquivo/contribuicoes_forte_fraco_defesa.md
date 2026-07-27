@@ -1,3 +1,9 @@
+> **📦 ARQUIVADO em 2026-07-27.** Munição para a reunião de orientação (2026-07-07). **Absorvido em `../estado_da_arte.md §7`**, com F1 e W6 atualizados pelo pivô cross-device. Mantido como registro da análise original.
+>
+> Índice dos documentos vivos: `../README.md`.
+
+---
+
 # Contribuições do trabalho: pontos fortes, fracos e preparação para a orientação
 
 > **⚠️ ATUALIZAÇÃO 2026-07-21 — PIVÔ cross-silo → cross-device.** A federação

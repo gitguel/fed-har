@@ -1,9 +1,14 @@
-# Auditoria de código e hiperparâmetros vs benchmark (2026-07-07)
+# Método e auditoria — hiperparâmetros, desvios e caça a bugs
 
-> **⚠️ Nota 2026-07-21:** menções à federação **cross-silo** aqui referem-se ao
-> desenho antigo, **abandonado como controle** (agora preliminar/motivação); eixo
-> ativo é **cross-device**. As conclusões de auditoria de código/hiperparâmetros
-> permanecem válidas. Ver `docs/analise_domain_shift.md`.
+*Base: `auditoria_bugs_hiperparametros.md` (2026-07-07, renomeado com `git mv` em
+2026-07-27). É o material da **seção de método** do artigo: o que replica o
+benchmark, o que desvia dele de propósito, e o que a auditoria encontrou.*
+
+> **Nota sobre o pivô:** menções à federação **cross-silo** aqui referem-se ao
+> desenho antigo, abandonado como controle em 2026-07-21 (hoje motivação —
+> `resultados.md §4`). As conclusões de auditoria de código e hiperparâmetros
+> **permanecem válidas**, porque são sobre o pipeline centralizado e o
+> agregador, não sobre a topologia. Eixo ativo: `plano_fedssl.md`.
 
 *Revisão sistemática feita em 2026-07-07 a pedido do Miguel: (a) caça a bugs em
 todo o código experimental; (b) re-auditoria de hiperparâmetros contra o
@@ -250,13 +255,47 @@ afirmar que a implementação segue Zhang et al. / Sui et al. ao pé da letra.
 
 ## 5. Recomendações (mínimas, em ordem de prioridade)
 
-1. **Antes da Fase 4 (grade federada do tstcc)**: adicionar
-   `seed_everything(args.seed, workers=True)` no `main()` de
-   `run_federated.py` (F1). Os 96 runs antigos permanecem válidos; anotar no
-   notebook federado que os runs do tstcc têm semeadura completa (ou re-rodar
-   os 96 se quiser homogeneidade total — ~40 min nas 8 GPUs).
-2. `assert len(self.loader) > 0` no `FlowerClient.__init__` (F2).
-3. `weights_only=True` nos dois `torch.load` (F6), quando mexer nos arquivos.
+*Estado atualizado em 2026-07-27.*
+
+1. ~~`seed_everything(args.seed, workers=True)` no `main()` de
+   `run_federated.py` (F1)~~ — **feito** (commit `4f5c13d`), antes da grade do
+   tstcc. A grade cross-silo completa (128 runs) permanece válida.
+2. ~~`assert len(self.loader) > 0` no `FlowerClient.__init__` (F2)~~ — **feito**
+   (`scripts/federated/client.py:90`), e replicado no pré-treino federado
+   (`scripts/ssl/pretrain_fed.py:148`), que é onde o piso de batch do
+   cross-device deixa de ser hipotético (48 dos 57 usuários do KuHar).
+3. `weights_only=True` nos `torch.load` (F6) — **pendente**, cosmético. Hoje em
+   `eval_transfer.py:72`, `ssl/downstream_eval.py:128`,
+   `ssl/sl_comb2target_eval.py:86` e `ssl/pretrain_fed.py:233`.
 4. Nenhuma mudança nos pipelines SL/LFR/TF-C/downstream: estão fiéis ao
    benchmark e os três gates quantitativos confirmam. Não "consertar" as
    divergências da §4 — elas são a base da comparabilidade.
+
+## 6. Apêndice — configuração oficial do TF-C (resumo dos YAMLs)
+
+*De `_arquivo/plano_implementacao_tstcc_tfc.md`, Apêndice A. É a fonte da
+descrição do TF-C na seção de método do artigo.*
+
+```yaml
+# train/tfc_<enc>.yaml (pré-treino)
+TFC_Model: input_channels 6, TS_length 60, num_classes 6*, batch_size 64,
+           single_encoding_size 128, pred_head null
+  backbone: TFC_Backbone(time_encoder: <ENC>, frequency_encoder: <ENC>)
+# * no pipeline de pretrain, pred_head null => SSL; num_classes é ignorado
+# lr: default da classe (3e-4). Pipeline: train_without_early_stopping, 100 épocas.
+# Dados de pretrain do paper: view rodrigues_2024 "no_overlap" (nós:
+# standardized_view train+val — MESMO desvio documentado do LFR, ver §3).
+
+# finetune/tfc_<enc>.yaml (downstream)
+SimpleSupervisedModel:
+  backbone: FromPretrained(TFC_Backbone(...), filter_keys ["backbone"], strict)
+  fc: MLP [256, 128, 6]   # 256 = concat tempo(128) + freq(128)
+  flatten: True
+# overrides: freeze/full_finetune ambos lr 1e-4; pipeline train (ES paciência 50,
+# best.ckpt, max 100 épocas); regimes por samples_per_class (batch 64).
+```
+
+Encoders por YAML (tempo e frequência = duas cópias da mesma arquitetura):
+`_ResNet1D`+SE (`resnetse5`), `CNN_PF_Backbone(include_middle, flatten)`
+(`cnnpff`), `RnnEncoder` GRU-100 bi (`rnn`), `HARSCnnEncoder(2304, 6, 1280)`
+(`tstcc`).

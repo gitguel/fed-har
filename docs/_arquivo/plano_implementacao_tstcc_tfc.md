@@ -1,3 +1,9 @@
+> **📦 ARQUIVADO em 2026-07-27.** Plano de fases para o 4º encoder (tstcc) e a 2ª técnica (TF-C), 2026-07-06. **Todas as grades foram executadas** (confira com `scripts/analysis/cache_status.py`). O Apêndice A (config oficial do TF-C) foi absorvido em `../metodo_e_auditoria.md §6`.
+>
+> Índice dos documentos vivos: `../README.md`.
+
+---
+
 # Plano de implementação — Encoder TS-TCC + TF-C (fechamento da parte centralizada)
 
 > **⚠️ Nota 2026-07-21:** o eixo federado migrou de **cross-silo → cross-device**;

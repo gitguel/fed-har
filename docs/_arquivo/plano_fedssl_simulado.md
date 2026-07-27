@@ -1,3 +1,9 @@
+> **📦 ARQUIVADO em 2026-07-27.** Design do pré-treino federado simulado (2026-07-13/14). **§3, §6 e §7 foram absorvidos em `../plano_fedssl.md §4`** e implementados em `scripts/ssl/pretrain_fed.py`. O resto (modo `silo`, onda B1, decisão D-K) foi superado pelo pivô e pela revogação da D-K. Mantido pela discussão dos Modos A/B e pela transcrição da lousa do orientador.
+>
+> Índice dos documentos vivos: `../README.md`.
+
+---
+
 # Plano — Pré-treino federado SIMULADO (sem Flower) + partição cross-device
 
 > **⚠️ ATUALIZAÇÃO 2026-07-21 — cross-silo abandonado; cross-device é o eixo único.**

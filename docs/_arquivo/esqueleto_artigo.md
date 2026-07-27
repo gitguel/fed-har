@@ -1,3 +1,9 @@
+> **📦 ARQUIVADO em 2026-07-27.** Esqueleto IEEE de 8 páginas (2026-07-07). **Retirado de circulação por decisão de 2026-07-27**: título, abstract, RQ1, contribuição 1, III-A/III-E, IV-C e Limitações ainda argumentam cross-silo, e as seções de resultados dependem de experimentos cross-device que não rodaram. Não reescrever agora — o esqueleto novo nasce quando esses resultados existirem. Cuidado ao reaproveitar: contém o '≈8 pp' (é 6,3 pp, ver `../resultados.md §4`), '6 classes' para todos os datasets (UCI tem 5, WISDM 4) e a referência 12 com autoria errada (é Logacjov, não Haresamudram).
+>
+> Índice dos documentos vivos: `../README.md`.
+
+---
+
 # Esqueleto do artigo — SSL Federado para Mitigação de Heterogeneidade de Domínio em HAR
 
 > **⚠️ ATUALIZAÇÃO 2026-07-21 — PIVÔ cross-silo → cross-device.** A federação

@@ -1,3 +1,9 @@
+> **📦 ARQUIVADO em 2026-07-27.** Operacionalização em 2 fases (2026-07-15). **Superado por `../plano_fedssl.md §5`**: a Fase 1 inteira era cross-silo, e a escolha de bases (MotionSense/UCI/WISDM) foi substituída por RW_thigh+MotionSense. A Fase 2 mandava implementar a decisão D-K, que foi **revogada** (`../plano_fedssl.md §3.3`).
+>
+> Índice dos documentos vivos: `../README.md`.
+
+---
+
 # Plano de execução FedSSL em fases — começar 2026-07-16
 
 > **⚠️ ATUALIZAÇÃO 2026-07-21 — PIVÔ cross-silo → cross-device.** A federação

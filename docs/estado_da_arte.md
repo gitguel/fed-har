@@ -1,22 +1,22 @@
-# F-SSL: estado da arte, verificação da contribuição C3 e a questão da defesa
+# Estado da arte, ineditismo e posicionamento da contribuição
 
-> **⚠️ ATUALIZAÇÃO 2026-07-21 — PIVÔ cross-silo → cross-device.** A federação
-> **cross-silo** (1 dataset/cliente) foi **abandonada como desenho e como controle**
-> (decisão com o orientador). Os ~8 pp de custo de domain shift viram
-> **preliminar/motivação**, não a contribuição. Eixo ativo: **cross-device**
-> (clientes = usuários); controle honesto = **Δ(cross-domain − in-domain)**. A
-> verificação de ineditismo de LFR/TF-C federados permanece válida. Ver
-> `docs/analise_domain_shift.md` e `docs/plano_fedssl_simulado.md`.
+*Base: `_arquivo/estado_da_arte_fssl_e_contribuicoes.md` (2026-07-07), com
+`_arquivo/contribuicoes_forte_fraco_defesa.md` (2026-07-07 → §7) e o
+posicionamento do piso de batch (`_arquivo/limite_batch_cliente_fssl.md`,
+2026-07-24 → §3.4) absorvidos em 2026-07-27.*
 
-*Escrito em 2026-07-07 em resposta a 5 pontos levantados (modelo em uso;
-posicionamento na linha do HIAAC; verificação rigorosa do claim C3;
-levantamento do estado da arte de Federated Self-Supervised Learning; e a
-provocação do orientador sobre suficiência de contribuição). Baseado em ~12
-buscas web estruturadas feitas nesta data. **Limitação metodológica honesta**:
-busca web com snippets/abstracts, não leitura integral dos papers; cobertura
-de arXiv/IEEE/ACM/Springer boa, mas não exaustiva (ver §6 para como fechar as
-lacunas). Nenhuma afirmação de "primeiro" abaixo deve ir ao artigo sem a
-verificação final da §6.1.*
+*O levantamento de 2026-07-07 saiu de ~12 buscas web estruturadas. **Limitação
+metodológica honesta**: busca com snippets/abstracts, não leitura integral;
+cobertura de arXiv/IEEE/ACM/Springer boa, mas não exaustiva (§6.1 lista como
+fechar). Nenhuma afirmação de "primeiro" deve ir ao artigo sem essa verificação
+final. Três PDFs foram lidos integralmente depois (§3.4).*
+
+> **Efeito do pivô cross-silo → cross-device (2026-07-21)** neste documento: a
+> **verificação de ineditismo** de LFR/TF-C federados (§2, §5) permanece válida —
+> ela é sobre os métodos, não sobre a topologia. O que muda é o **enunciado da
+> contribuição** (§4.2), reescrito para o eixo cross-device, e a fraqueza W6
+> (§7.2), que o pivô praticamente responde. Ver `plano_fedssl.md` e
+> `resultados.md §4`.
 
 ---
 
@@ -191,6 +191,71 @@ O núcleo metodológico do campo, de onde vêm os conceitos que reusamos:
    de referência contra o qual validar a implementação. Nossa réplica
    validada (viés ±2 pp vs da Luz et al.) é um diferencial metodológico real.
 
+### 3.4 O piso de batch: como a literatura escapa dele (verificado nos PDFs, 2026-07-24)
+
+*Posicionamento do achado descrito em `plano_fedssl.md §3` — o cliente mínimo
+viável em FSSL é um **batch**, não uma amostra.*
+
+A comunidade de F-SSL conhece o problema, mas quase sempre o enquadra como
+**degradação de qualidade** sob não-IID, não como **piso de viabilidade** (o
+cliente não consegue nem um passo de gradiente). As linhas de ataque:
+
+1. **Diagnóstico teórico — o objetivo global do FSSL ≠ soma dos locais.** Com
+   objetivo contrastivo, cada amostra só contrasta contra os negativos do próprio
+   cliente; sob não-IID isso enviesa o FedAvg. É a motivação explícita de FedSC e
+   da família FedU/FedEMA.
+2. **Compartilhar estatísticas para recompor negativos entre clientes.** **FedSC**
+   (ICML 2024) troca **matrizes de correlação das representações** além dos pesos,
+   habilitando *inter-client contrast*. Único método com garantia; aplica DP às
+   estatísticas — ao custo de mais comunicação e uma superfície de privacidade nova.
+3. **Trocar de objetivo para um que não dependa de negativos/batch.** **FedEMA /
+   Divergence-aware FedSSL** (ICLR 2022) constrói sobre **BYOL** exatamente para
+   evitar a dependência de negativos.
+4. **Reformular como clustering global.** **Orchestra** (ICML 2022), projetado
+   para ser robusto a variação de nº de clientes e participação — o regime
+   cross-device com muitos clientes pequenos.
+5. **HAR especificamente.** **UniHAR** (MobiCom 2023) usa LIMU-BERT (reconstrução
+   mascarada, por-amostra); **Saeed et al.** (IoT-J 2021) usam correspondência
+   scalograma-sinal (classificação binária). Ambos assumem clientes com dado
+   suficiente e **nenhum isola o piso de batch por cliente**.
+
+**O que cada vizinho realmente pré-treina** (lido no PDF):
+
+| Paper | Objetivo SSL | "Batch-hungry"? | Como escapa do piso | Datasets |
+|---|---|---|---|---|
+| **UniHAR** (MobiCom'23) | LIMU-BERT = **reconstrução mascarada** | Não (perda por-amostra) | Por construção do objetivo | UCI, HHAR, MotionSense, Shoaib |
+| **Saeed** (IoT-J'21) | Scalogram-signal = **classificação binária** | Quase não | Objetivo + **shards IID**; batch federado **12** | Sleep-EDF, HHAR, MobiAct, WiFi-CSI, WESAD |
+| **FedSC** (ICML'24) | **Spectral Contrastive** | **Sim** | **Batch 512/256** + dado local enorme + matrizes de correlação | SVHN, CIFAR-10/100 |
+
+**A literatura evita o piso de batch por construção, não por acaso:**
+- **FedSC** roda **cross-silo com dado local enorme e batch 512** — a prova de
+  convergência tem termo de erro que só some com "large batch size B". Resolve o
+  skew de rótulo, não o batch pequeno; assume o oposto do KuHar.
+- **Saeed** é quase uma confissão do ponto: **não particiona por usuário** — cita
+  textualmente *"we randomly divide the training set into multiple subsets…
+  due to fewer users in existing datasets. This choice might result in a
+  decentralized IID dataset… does not suffer from extreme heterogeneity."*
+- **UniHAR** usa reconstrução mascarada (por-amostra); o piso nem se coloca.
+
+**Lacuna (candidata a contribuição, a afirmar com cautela):** a literatura ou
+(a) troca para objetivo por-amostra/binário/BYOL, ou (b) foge do cross-device
+real com shards IID e batch grande. **Ninguém roda um objetivo contrastivo
+batch-hungry (SimCLR/NT-Xent/BBT) sobre partição real por usuário com clientes
+minúsculos** — exatamente onde o nosso TF-C + LFR/BBT sobre KuHar-por-usuário cai.
+O achado não é "a qualidade degrada" (isso já se sabe), e sim um **piso de
+viabilidade**: com objetivo definido sobre o batch, um participante real com
+< 1 batch **não produz nenhum gradiente** e falha em silêncio no FedAvg.
+Enquadrar como *critério de elegibilidade de cliente* e **reportar a taxa de
+exclusão** (KuHar: 48/57 = 84% dos usuários, 48% das janelas).
+
+> **Conferência de ineditismo (2026-07-24).** Os três itens antes bloqueados
+> foram lidos: **B1** (da Luz, benchmark IEEE Access'26) é **centralizado** — zero
+> conteúdo federado/piso de batch; **B5** (survey de SSL-HAR, **Logacjov**
+> IMWUT'24) é survey **centralizado**, "federated" aparece 1× só em referência;
+> **C8** (FedST/FedOST, ACM MM'24) é FL **supervisionado** (pFL) de classificação
+> de séries temporais, batch 128 fixo, sem discutir piso de batch. **Nenhum dos
+> três antecipa o achado.** Ressalva permanente: nenhuma varredura é exaustiva.
+
 ## 4. Sobre a provocação do orientador
 
 > "Apenas federar uma técnica (LFR por exemplo) não é contribuição o bastante
@@ -210,16 +275,18 @@ falsificabilidade. Se a dissertação fosse isso, a crítica procederia.
 A contribuição de uma dissertação empírica não é o verbo "federar" — é a
 **pergunta + o desenho experimental que a responde de forma confiável**:
 
-1. **Pergunta científica clara e aberta** (§4.3, lacunas 1–4): *o pré-treino
-   SSL compra de volta a acurácia que a heterogeneidade de domínio custa a
-   uma federação cross-silo — e isso sobrevive quando o próprio pré-treino é
-   federado?* Nenhum trabalho mapeado responde isso.
-2. **Desenho experimental que ninguém tem**: domain shift real por construção
-   (não Dirichlet) **com grupo de controle** (cenário 2 IID de volume
-   idêntico + ablação 3–8) — isso permite atribuição causal do efeito, coisa
-   que UniHAR/FedCSSL/CDFL não fazem; 2 famílias de SSL × 4 encoders × 2
-   topologias × budget pareado; validação prévia da implementação contra
-   benchmark publicado.
+1. **Pergunta científica clara e aberta** (§3.3, lacunas 1–4): *o pré-treino
+   SSL compra de volta a acurácia que a heterogeneidade custa a uma federação
+   **cross-device** — e isso sobrevive quando o próprio pré-treino é federado?*
+   Nenhum trabalho mapeado responde isso. *(Enunciado atualizado em 2026-07-27:
+   a versão de julho dizia "cross-silo".)*
+2. **Desenho experimental que ninguém tem**: heterogeneidade real por construção
+   (não Dirichlet) **com controle pareado para cada eixo** — domain shift,
+   feature skew e label skew isolados cada um por um Δ contra o seu próprio
+   controle (`plano_fedssl.md §2`), o que permite atribuição causal, coisa que
+   UniHAR/FedCSSL/CDFL não fazem; 2 famílias de SSL × 4 encoders × 2 topologias
+   × budget pareado; validação prévia da implementação contra benchmark
+   publicado.
 3. **As decisões de design do FedSSL-LFR são questões de pesquisa, não
    plumbing** — e o design doc já as formula como ablações: (i) seleção DPP
    global vs local (coerência de alvos entre clientes — problema que NÃO
@@ -238,11 +305,12 @@ A contribuição de uma dissertação empírica não é o verbo "federar" — é
    domain shift — igualmente publicável (cf. achados negativos influentes na
    literatura de FedSSL, como os do próprio FedEMA sobre stop-gradient).
 
-**Enunciado-síntese para usar com o orientador**: "A contribuição não é
-federar o LFR; é o primeiro estudo controlado de *quando e por quê* o
-pré-treino auto-supervisionado — centralizado ou federado, contrastivo ou
-livre de aumentações — mitiga heterogeneidade de domínio real em HAR
-cross-silo, com custo de comunicação na conta."
+**Enunciado-síntese para usar com o orientador** *(atualizado para cross-device
+em 2026-07-27)*: "A contribuição não é federar o LFR; é o primeiro estudo
+controlado de *quando e por quê* o pré-treino auto-supervisionado — centralizado
+ou federado, contrastivo ou livre de aumentações — mitiga heterogeneidade real em
+HAR **cross-device (clientes = usuários)**, separando domain shift de skew
+inter-pessoa, com custo de comunicação na conta."
 
 ### 4.3 Se ainda assim quiser "mais método" (opções de baixo risco, em ordem de custo)
 
@@ -275,7 +343,7 @@ quase certamente citaria o paper original do método*. Então, em vez de torcer
 para uma busca por palavra-chave acertar os termos, varremos **todo** o
 conjunto "citado por" das duas sementes e filtramos por federação.
 
-Execução (script em `scratchpad/snowball.py`): API de grafo de citações do
+Execução (script descartável, não versionado): API de grafo de citações do
 **Semantic Scholar**, campos título+abstract+ano+venue, filtro
 `federat|decentraliz` sobre título+abstract. Cobertura: TF-C = **499 papers
 citantes**; LFR = **19 citantes**. Limitação: o índice do S2 não é exaustivo
@@ -409,7 +477,7 @@ abstract nesta análise — "ler" aqui = leitura integral com fichamento.
 | B2 | Zhang et al., *TF-C*, NeurIPS 2022 | 1 | uma das 2 técnicas; entender a loss NT-Xent e o ramo de frequência |
 | B3 | Sui et al., *LFR*, ICLR 2024 | 1 | a outra técnica; DPP, projetores/preditores aleatórios |
 | B4 | Napoli et al., *DAGHAR*, Scientific Data 2024 | 1 | o dataset; splits, padronização, baselines de domínio |
-| B5 | Haresamudram et al., *SSL for Accelerometer HAR: A Survey*, IMWUT 2024 | 2 | mapa da SSL-HAR; taxonomia p/ related work |
+| B5 | **Logacjov**, *SSL for Accelerometer-based HAR: A Survey*, IMWUT 8(4):149, 2024 | 2 | mapa da SSL-HAR; taxonomia p/ related work. ⚠️ autoria corrigida em 2026-07-24 (**não** é Haresamudram) |
 | B6 | Rodrigues da Silva et al., *Impact of Pre-training Datasets (CPC)*, BRACIS 2024 | 2 | trabalho do grupo; origem do desenho comb→target |
 | B7 | Eldele et al., *TS-TCC*, IJCAI 2021 | 3 | encoder tstcc vem daqui; citar corretamente |
 | B8 | Yue et al., *TS2Vec*, AAAI 2022 | 3 | citado no benchmark; melhor teto @100% — contexto |
@@ -465,8 +533,80 @@ que o reviewer vai cobrar).
 
 ---
 
-*Documentos relacionados: `docs/paper/esqueleto_artigo.md` (seções II-D/II-E
-atualizadas com estes achados, incl. FedST/FedOST a inserir),
-`docs/plano_experimento3_fedssl.md` (variantes `backbone-only`/`fedbn`/
-`agg_shock` da §5.3 já constam do plano). Script do snowballing:
-`scratchpad/snowball.py`.*
+## 7. Forças e fraquezas da contribuição (munição para a defesa)
+
+*De `contribuicoes_forte_fraco_defesa.md` (2026-07-07), absorvido em 2026-07-27.
+Documento franco de propósito: a parte de fraquezas é onde está o valor, porque é
+o que o orientador/banca vai atacar. Chegar já tendo nomeado a fraqueza desarma o
+ataque.*
+
+### 7.1 Pontos fortes (ordenados por quanto blindam a defesa)
+
+| # | Força | Evidência | Quão único |
+|---|---|---|---|
+| F1 | **Desenho com controle pareado** | Cada eixo de heterogeneidade isolado por um Δ contra o seu próprio controle (`plano_fedssl.md §2`) → atribuição causal. UniHAR/FedCSSL/CDFL medem "federado é pior" sem isolar a causa. ⚠️ *A versão cross-silo desta força (cenário 1 vs 2) foi **superseded** pelo pivô; o espírito — atribuição causal controlada — permanece, na topologia nova.* | Muito alto |
+| F2 | **Matriz comparativa que ninguém tem** | 2 famílias de SSL (contrastiva vs augmentation-free) × 4 encoders × 2 topologias de pré-treino × regimes de dados. A literatura federa **uma** técnica por paper. | Alto |
+| F3 | **Reprodutibilidade / validação prévia** | Réplica do benchmark de da Luz et al. célula a célula: viés ±2 pp, MAE 2–5 pp, 14/14 hiperparâmetros idênticos (`metodo_e_auditoria.md`). Nossos números são *plug-compatible* com a tabela publicada. | Alto (raro em FSSL) |
+| F4 | **Ineditismo verificado a sério** | LFR e TF-C nunca federados, confirmado em 4 ângulos (busca web + snowball S2 + snowball OpenAlex + queries Scholar-style). Não é "acho que é novo". | Alto |
+| F5 | **Comunicação como métrica de 1ª classe** | uplink/downlink por rodada, pré-treino + finetuning. Achado não-óbvio: LFR federado é **caro** em uplink (preditores), linear-readout federado é quase grátis. | Alto |
+| F6 | **Heterogeneidade real, não simulada** | Domain shift por construção (datasets reais) e skew inter-pessoa pela partição natural por usuário — não Dirichlet. | Médio-alto |
+| F7 | **Resultado garantido nos dois desfechos** | Funcionar = 1ª evidência positiva p/ LFR/TF-C federados; divergir = caracterização quantificada de *por que* SSL de séries temporais diverge. Achado negativo é publicável (cf. FedEMA sobre stop-gradient). | Médio |
+| F8 | **Ponte entre as duas linhas do HIAAC** | Linha distribuída (você) + dados/protocolo/baselines (linha DAGHAR). Explica FedAvg/Flower como *idioma da linha*, não falta de ambição. | Contexto |
+| F9 | **Perguntas de design que são pesquisa, não plumbing** | DPP global vs local (específico da família augmentation-free); política de preditores (`full` vs `backbone-only`); alternância × rodada. Cada uma vira ablação com resultado. | Médio |
+| F10 | **O piso de batch como achado próprio** | Critério de elegibilidade de cliente em FSSL, com taxa de exclusão medida — lacuna real na literatura (§3.4). | Alto, se bem enquadrado |
+
+### 7.2 Pontos fracos (ordenados por probabilidade de ataque × gravidade)
+
+- **W1 — "Não há método novo; é aplicar técnicas existentes num cenário novo."**
+  *(o ataque principal)* Validade parcial e legítima. Resposta em 2 tempos:
+  (1) contribuição empírica com desenho controlado, ineditismo verificado e
+  validação é padrão-mestrado aceito (FedU, L-DAWA nasceram como "estudo +
+  variante simples"); (2) **oferecer um componente de método de baixo custo** —
+  `backbone-only`/`fedbn`/`agg_shock` já estão no plano, basta **promover de
+  ablação a contribuição nomeada**.
+- **W2 — "Só FedAvg. Cadê FedProx/FedBN?"** Validade média. FedAvg é *deliberado*:
+  para atribuir o efeito à representação (não ao agregador) é preciso fixar o
+  agregador. FedBN já está previsto como variante, e o nosso non-IID é de
+  *features* — o caso dele. Enunciar assim inverte a fraqueza em decisão.
+- **W3 — "É incremental sobre o benchmark de da Luz et al."** O risco de percepção
+  **mais perigoso**, porque é superficialmente verdadeiro. Resposta: a
+  continuidade é *ferramenta*, não contribuição. *"Reusamos o protocolo deles pelo
+  mesmo motivo que se reusa uma régua calibrada — para que a medida nova seja
+  comparável, não porque a medida nova seja a mesma."*
+- **W4 — "FedST/FedOST já fazem tempo-frequência em FL."** Real (achado do
+  snowballing). São **supervisionados**, miram personalização, usam
+  tempo-frequência como regularização, não medem comunicação nem comparam
+  topologias. Citar e distinguir **proativamente**.
+- **W5 — "Uma coleção só (DAGHAR), toda smartphone-IMU."** Escopo declarado; o
+  DAGHAR é desenhado para isolar domain shift com vieses triviais removidos.
+  Generalização a outras modalidades = trabalho futuro explícito.
+- **W6 — "6 clientes cross-silo. E escala? Cross-device?"** ✅ **Praticamente
+  respondida pelo pivô**: o eixo agora é cross-device, com até 151 usuários reais
+  (`dados_daghar.md §3`). Era a fraqueza mais fácil de atacar e virou o desenho.
+- **W7 — "Comunicação são bytes teóricos, não tempo real."** Verdade. Bytes é a
+  métrica **independente de ambiente** de propósito; wall-clock não seria
+  replicável.
+- **W8 — "O componente de maior valor ainda não rodou."** Risco de cronograma, não
+  de mérito. Existe plano com gates e ordem de corte — levar como "tenho plano B
+  de escopo".
+- **W9 — "Achado negativo soa como plano de fuga."** Baixa se bem enquadrado: é
+  **pergunta científica cujas duas respostas são informativas**, decidida antes de
+  saber o resultado. O `agg_shock` e o gate IID tornam o "não" rigoroso.
+
+### 7.3 A contribuição em três níveis (para negociar escopo)
+
+| Nível | O que é | Custo extra | Quando escolher |
+|---|---|---|---|
+| **Mínimo defensável** | SL + SSL central + baseline federado + finetuning federado com init central + a quantificação da heterogeneidade. Quase tudo medido. | ~0 | Se o cronograma desabar |
+| **Recomendado (alvo)** | + FedAvg-SSL de LFR e TF-C **com uma variante de método promovida a contribuição nomeada** (`backbone-only` OU `fedbn`) + comunicação ponta-a-ponta + a pergunta "augmentation-free é mais robusto à agregação que contrastivo?" | ~1–2 semanas de cluster | Caso base |
+| **Stretch** | + agregação adaptativa via `agg_shock` (mini-L-DAWA para séries temporais) OU FedEMA adaptado ao TF-C + 1 baseline FedSSL reproduzido | +2–3 semanas | Se estiver adiantado |
+
+**Recomendação**: propor o **Recomendado** e perguntar ao orientador qual variante
+de método ele prefere ver promovida — é decisão dele. Isso já responde à
+provocação: não é "federar uma técnica", é "federar duas famílias + caracterizar
++ uma variante de método própria".
+
+---
+
+*Bibliografia local (PDFs baixados): `papers/README.md`. Desenho experimental:
+`plano_fedssl.md`. Resultados medidos: `resultados.md`.*

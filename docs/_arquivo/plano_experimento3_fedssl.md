@@ -1,3 +1,9 @@
+> **📦 ARQUIVADO em 2026-07-27.** Design doc do Exp. 3 via Flower (2026-07-07). **Superado por `../plano_fedssl.md`**: as fases 1–5 eram cross-silo e morreram no pivô de 2026-07-21; o pré-treino SSL deixou de usar Flower. Mantido pelas decisões de design §3.1–3.6, herdadas.
+>
+> Índice dos documentos vivos: `../README.md`.
+
+---
+
 # Plano de implementação — Experimento 3: pré-treino SSL federado + finetuning federado (FedAvg-SSL)
 
 > **⚠️ ATUALIZAÇÃO 2026-07-21 — PIVÔ cross-silo → cross-device.** Além do STATUS
