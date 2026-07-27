@@ -2,12 +2,12 @@
 
 > **⚠️ DEPRECATED como desenho/controle (2026-07-21).** A federação **cross-silo**
 > desta pilha (cenários 1–8) foi **abandonada** (decisão com o orientador). O
-> `results/federated_eval.csv` (96 runs, ~8 pp de domain shift) **não é deletado**:
-> vira **resultado PRELIMINAR/motivação**, não a contribuição. O eixo ativo agora é
-> **cross-device** (clientes = usuários), via `partition_users.py` +
-> `scripts/ssl/pretrain_fed.py` (a fazer) — design em
-> `docs/plano_fedssl_simulado.md` e análise em `docs/analise_domain_shift.md`. O
-> **finetuning federado** (Exp. 2/3) permanece no Flower.
+> `results/federated_eval.csv` (**128 runs, 6,3 pp** de custo de domain shift)
+> **não é deletado**: vira **resultado PRELIMINAR/motivação**, não a contribuição
+> (ver `docs/resultados.md §4`). O eixo ativo é **cross-device** (clientes =
+> usuários), via `partition_users.py` + `scripts/ssl/pretrain_fed.py` (já
+> implementado) — desenho em `docs/plano_fedssl.md`. O **finetuning federado**
+> permanece no Flower.
 
 Integração com **Flower** (`flwr` 1.31 + `ray` 2.55) na configuração cross-silo
 do projeto: **FedAvg** por simulação local, avaliação **centralizada por domínio**
@@ -34,12 +34,11 @@ baselines supervisionados (`scripts/common.py`, os `build_model` de
 
 > **Escopo do Flower (decisão de 2026-07-13)**: esta pilha (Flower + ray) é
 > usada para o treino **supervisionado** federado — o baseline já medido e o
-> finetuning federado dos Exp. 2/3. O **pré-treino SSL federado NÃO usa
-> Flower**: é uma simulação exata de FedAvg em loop Python
-> (`scripts/ssl/pretrain_fed.py`, a fazer), incluindo a partição
-> **cross-device por usuário** — design em `docs/plano_fedssl_simulado.md`.
-> A `partitions.py` daqui ganha `make_ssl_client_datasets(partition, combo,
-> seed)` para servir os dois mundos.
+> finetuning federado. O **pré-treino SSL federado NÃO usa Flower**: é uma
+> simulação exata de FedAvg em loop Python (`scripts/ssl/pretrain_fed.py`, **já
+> implementado**), incluindo a partição **cross-device por usuário** — desenho em
+> `docs/plano_fedssl.md §4`. A `make_ssl_client_datasets(partition, combo, seed)`
+> em `partitions.py` serve os dois mundos.
 
 A comparação **1 vs 2** (mesmo volume total de dados) isola o efeito do *domain
 shift*: espera-se que o Cenário 2 (IID) fique próximo do baseline `combined`
@@ -57,7 +56,7 @@ poetry run python scripts/federated/run_federated.py \
     --encoder resnetse5 --scenario 1 --seed 0 --rounds 50
 ```
 
-Argumentos: `--encoder {resnetse5,cnnpff,rnn}`, `--scenario {1..8}`,
+Argumentos: `--encoder {resnetse5,cnnpff,rnn,tstcc}`, `--scenario {1..8}`,
 `--seed {0..3}`, `--rounds`, `--local-epochs`, `--num-clients` (default 6).
 
 Rodar via **tmux** para experimentos longos (ver `CLAUDE.md`); a GPU MX570A roda
@@ -93,6 +92,7 @@ iniciais (sem custo de comunicação). `uplink_bytes`/`downlink_bytes` = bytes d
 - **Baseline supervisionado federado cross-device** (novo controle do Fed-SSL):
   3 experimentos — (1) in-domain RW_thigh, (2) in-domain MotionSense, (3)
   cross-domain RW_thigh+MotionSense — usando `partition_users.py`. Controle honesto
-  do custo de domain shift = **Δ(cross-domain − in-domain)**. Design em
-  `docs/plano_fedssl_simulado.md` / `docs/plano_fedssl_fases.md`.
-- Finetuning federado a partir de checkpoint SSL (Exp. 2/3) — permanece no Flower.
+  do custo de domain shift = **Δ(cross-domain − in-domain)**. Desenho, ordem de
+  execução e a lacuna da API de partições que bloqueia o experimento (3):
+  `docs/plano_fedssl.md §4.2` e `§5`.
+- Finetuning federado a partir de checkpoint SSL — permanece no Flower.

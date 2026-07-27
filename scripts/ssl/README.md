@@ -13,13 +13,14 @@ baselines supervisionados, seguindo o padrão direto de `scripts/supervised/`.
 | `pretrain_tfc.py` | **Estágio A (TF-C)** — encoders gêmeos tempo/freq + NT-Xent poly; grade completa validada contra o benchmark (gate 7) | ✅ |
 | `downstream_eval.py` | **Estágios B+C** — `--method {lfr,tfc}`; treina cabeça (`linear`/`finetune`) × 4 regimes e avalia nos 6 alvos | ✅ |
 | `run_comb2target.py` | Grade comb→target (backbone `combined`, finetune só no alvo) | ✅ |
-| `pretrain_fed.py` | **Pré-treino federado SIMULADO** (FedAvg manual, sem Flower; modos one-shot/multi-round, partições silo/device) — ver `docs/plano_fedssl_simulado.md` | ⬜ a fazer |
+| `sl_comb2target_eval.py` | **Skyline** do comb→target: mesmo pipeline com backbone do SL-`combined` (`docs/resultados.md §3`) | ✅ |
+| `pretrain_fed.py` | **Pré-treino federado SIMULADO** (FedAvg manual, sem Flower; partições `silo`/`iid`/`device-<dataset>`) — ver `docs/plano_fedssl.md §4` | ✅ implementado |
 
 ## Pipeline (espelha o supervisionado centralizado)
 
 | Estágio | O que faz |
 |---|---|
-| **A** (`pretrain_lfr.py`) | LFR pré-treina o backbone na fonte, **train+val, sem rótulos**, sem early stopping (mantém o último estado). Fontes = 6 datasets + `combined`. Grade: 3 enc × 7 fontes × 4 seeds = **84 backbones**. |
+| **A** (`pretrain_lfr.py`) | LFR pré-treina o backbone na fonte, **train+val, sem rótulos**, sem early stopping (mantém o último estado). Fontes = 6 datasets + `combined`. Grade: 4 enc × 7 fontes × 4 seeds = **112 backbones**. |
 | **B** (`downstream_eval.py`) | Treina a cabeça MLP (a mesma do SL) na fonte rotulada, em **2 protocolos** (`linear` = backbone congelado; `finetune` = descongelado) × **4 regimes** `n_shots` ∈ {1, 10, 100 amostras-por-classe, `full`}, com ES (paciência 50) + melhor estado por val_loss. |
 | **C** (`downstream_eval.py`) | Avalia (backbone + cabeça) nos `test.csv` dos 6 alvos → acurácia + F1-macro. |
 
@@ -32,12 +33,14 @@ python scripts/ssl/downstream_eval.py --encoder resnetse5 --source combined --se
     --protocol both --shots all --epochs 3
 
 # Grade completa (rodar via tmux — ver CLAUDE.md; grade grande pede o cluster)
-python scripts/ssl/pretrain_lfr.py       # 84 backbones -> checkpoints/ssl/lfr/...
-python scripts/ssl/downstream_eval.py    # 4032 linhas  -> results/ssl_lfr_eval_transfer.csv
+python scripts/ssl/pretrain_lfr.py       # 112 backbones -> checkpoints/ssl/lfr/...
+python scripts/ssl/downstream_eval.py    # 5376 linhas   -> results/ssl_lfr_eval_transfer.csv
 ```
 
-Argumentos principais: `--encoder {resnetse5,cnnpff,rnn}`, `--source {combined,<dataset>}`,
+Argumentos principais: `--encoder {resnetse5,cnnpff,rnn,tstcc}`, `--source {combined,<dataset>}`,
 `--seed`, `--protocol {linear,finetune,both}`, `--shots {1,10,100,full,all}`, `--force`.
+
+Cobertura real de cada cache: `poetry run python scripts/analysis/cache_status.py`.
 
 ## Saídas
 

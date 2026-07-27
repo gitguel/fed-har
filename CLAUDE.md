@@ -53,12 +53,24 @@ Os experimentos são scripts Python diretos (não há pacote instalável). Layou
 scripts/
   common.py                 # infra compartilhada: DataModule, constantes, Trainer, callbacks
   eval_transfer.py          # avaliação transfer cross-dataset (acurácia + F1-macro) -> results/
-  supervised/               # baselines supervisionados (FEITO)
-    train_resnetse5.py  train_cnnpff.py  train_rnn.py  train_combined.py
-    RESNETSE5.md  CNNPFF.md  RNN.md  COMBINED.md
-  ssl/                      # pré-treino SSL (LFR, TF-C) — A FAZER (ver README)
-  federated/                # integração Flower / FedAvg — A FAZER (ver README)
+  gpu_pool.py               # pool de subprocessos fixados por GPU (drivers de grade)
+  supervised/               # baselines supervisionados (FEITO) — 4 encoders
+    train_resnetse5.py  train_cnnpff.py  train_rnn.py  train_tstcc.py  train_combined.py
+    run_all_shots.py        # driver da grade (4 regimes de rótulos)
+  ssl/                      # pré-treino SSL centralizado + federado (FEITO)
+    pretrain_lfr.py  pretrain_tfc.py  downstream_eval.py  run_all.py
+    run_comb2target.py      # comb->target (pré-treino no combined, finetune no alvo)
+    sl_comb2target_eval.py  # skyline supervisionado do comb->target
+    pretrain_fed.py         # pré-treino federado SIMULADO (FedAvg manual, sem Flower)
+  federated/                # FedAvg supervisionado via Flower (cross-silo: DEPRECATED)
+    partitions.py  partition_users.py  client.py  server.py  run_federated.py  run_all.py
+  analysis/                 # geradores que só LEEM caches
+    build_presentation_assets.py  dataset_facts.py  cache_status.py
 ```
+
+**Estado das grades:** não confie em contagens escritas à mão — rode
+`poetry run python scripts/analysis/cache_status.py`. Fatos dos datasets:
+`scripts/analysis/dataset_facts.py`.
 
 **Padrão de import dos scripts** (simples e replicável): todo script executável
 coloca `scripts/` no `sys.path` e importa relativo a ele:
@@ -81,8 +93,25 @@ poetry run python scripts/eval_transfer.py [--force]           # (re)gera result
 
 Saídas: `checkpoints/supervised/<encoder>/<dataset>/seed<N>/{first,best,last}.ckpt`,
 logs Lightning em `logs/supervised/...`, e o cache de avaliação em
-`results/supervised_eval_transfer.csv` (colunas: `encoder,source,seed,target,test_acc,test_f1_macro`).
-O notebook `notebooks/supervised_training_runner.ipynb` apenas **lê** esse cache e plota.
+`results/supervised_eval_transfer.csv` (colunas:
+`encoder,source,seed,n_shots,target,test_acc,test_f1_macro`).
+O notebook `notebooks/centralized_supervised_avaliation.ipynb` apenas **lê** esse
+cache e plota.
+
+## Documentação (`docs/`)
+
+`docs/README.md` é o índice — leia-o antes de procurar qualquer coisa. Os 5
+documentos vivos são `dados_daghar.md` (fatos dos datasets, fonte única),
+`resultados.md` (o que foi medido), `plano_fedssl.md` (o próximo passo),
+`estado_da_arte.md` (posicionamento) e `metodo_e_auditoria.md` (método). O que foi
+superado está em `docs/_arquivo/` com cabeçalho de arquivamento — **não use
+documento de `_arquivo/` como fonte**, os números lá estão datados.
+
+**Apresentações**: uma pasta por apresentação, `docs/apresentacao_<DD_MM>/`. A
+pasta de uma apresentação já entregue é **registro imutável** — nunca regerar
+dentro dela. Assets novos nascem numa pasta nova:
+`poetry run python scripts/analysis/build_presentation_assets.py --outdir docs/apresentacao_<DD_MM>`
+(o `--outdir` é obrigatório justamente para não sobrescrever registro).
 
 ## Architecture
 
