@@ -15,6 +15,12 @@ substituiu — nada foi apagado.
 | [`metodo_e_auditoria.md`](metodo_e_auditoria.md) | material da **seção de método**: hiperparâmetros vs benchmark, desvios deliberados, achados da auditoria de código. |
 | [`papers/README.md`](papers/README.md) | quais PDFs estão baixados nesta máquina (os PDFs não são versionados). |
 
+**Registros de sessão** (`sessao_<AAAA-MM-DD>_<assunto>.md`) não são docs vivos:
+valem para os commits que citam e envelhecem. O mais recente é
+[`sessao_2026-07-28_grade_cross_device.md`](sessao_2026-07-28_grade_cross_device.md)
+— fecha o baseline FedAvg cross-device. Para retomar o trabalho, comece por
+[`prompt_proxima_sessao.md`](prompt_proxima_sessao.md).
+
 Apresentações ficam em `apresentacao_<DD_MM>/`, uma pasta por apresentação. **A
 pasta de uma apresentação já entregue é registro imutável** — nunca regerar
 dentro dela. Assets novos nascem numa pasta nova:
