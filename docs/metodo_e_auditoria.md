@@ -77,6 +77,111 @@ sem escadas) são tratadas igual nos dois códigos (agrupa-se só o que existe).
 Manter como está é razoável; apenas registrar que a célula shots=100 nunca
 disparou o fallback.
 
+### F7 — ALTO (repensar, prioridade) · seleção few-shot usa o split de validação inteiro
+
+**Decisão de 2026-07-28: manter como está**, por fidelidade ao Minerva e ao
+benchmark do da Luz — mesma lógica da §4. Registrado aqui porque é o ponto de
+método mais atacável do eixo few-shot, com prioridade de revisão equivalente à
+do piso de batch (`_arquivo/limite_batch_cliente_fssl.md`).
+
+**O fato.** No regime `n_shots=K`, o treino usa `K` amostras por classe
+(`common.py:320-326`, via `subsampled_train_loader`) mas a seleção de época e o
+early stopping usam `dm.val_dataloader()` — o split de validação **completo** —
+monitorando `MONITOR_METRIC = "val_loss"` (`common.py:72`, `:255-265`). Em
+`n_shots=1` no RealWorld_thigh isso é **6 janelas de treino contra 1792 de
+seleção**: o conjunto que escolhe o modelo é ~300× o que o treina. O número
+reportado não descreve um cenário de escassez de rótulo, porque a escassez não
+alcança a seleção.
+
+Afeta as células `n_shots ∈ {1, 10, 100}` de `supervised_eval_transfer.csv`,
+`ssl_lfr_eval_transfer.csv` e `ssl_tfc_eval_transfer.csv` — quanto menor o
+regime, maior o otimismo.
+
+**Não é desvio nosso: é o padrão do framework.** `MultiModalHARSeriesDataModule`
+aplica `samples_per_class` **só ao treino**
+(`minerva/data/data_modules/har.py:583-585`, comentário literal *"Apply sampling
+only to the train split"*); validação e teste ficam inteiros. Nosso
+`few_shot_indices` reimplementa a mesma semântica à mão.
+
+**Mas os papers originais não fazem assim.** Levantamento nos 21 PDFs de
+`docs/papers/` (2026-07-28) — a maioria é silenciosa, e os explícitos divergem:
+
+| fonte | seleção no regime de poucos rótulos |
+|---|---|
+| **SimCLR** (B9, Ap. B.5) | **nenhuma** — épocas fixas por regime (60 em 1%, 30 em 10%); `"early stop"` aparece 0× no paper. Onde usa validação (transfer), **tira do treino e devolve depois**: *"we held out a subset of the training set for validation (…) After selecting the optimal hyperparameters (…) we retrained the model using (…) all training and validation images"* |
+| **TS2Vec** (B8) | **nenhuma** — hiperparâmetros fixos, e explica por quê |
+| **TF-C** (B2) — **nosso método** | **escala com o orçamento**: 30/classe para fine-tune, **10/classe** para validação |
+| UniHAR (C7), Saeed (C9) | proporção fixa (10% / 20%), mas nunca descem a 1-shot |
+| **TS-TCC** (B7) — origem do protocolo 1%/5%/10% | **não menciona validação nenhuma vez** |
+
+O caso do TF-C é o mais incômodo: nossa reprodução diverge do protocolo de
+avaliação do próprio paper que ela reproduz.
+
+**Opções examinadas.** (a) validação proporcional ao orçamento, à la TF-C, com
+*carve-out* do mesmo orçamento à la SimCLR; (b) sem seleção, `R`/épocas fixas
+calibradas uma vez e congeladas; (c) `use_train_as_validation=True`
+(`har.py:623-624`), que zera o custo em rótulos — **descartada**: com 6 janelas
+a acurácia no próprio treino satura de imediato e o `argmax` cai numa rodada
+arbitrária; o flag existe para satisfazer o encanamento do `ModelCheckpoint`,
+não como protocolo.
+
+**A referência canônica do problema: Oliver et al., NeurIPS 2018** (`B10`,
+arXiv:1804.09170). O paper nomeia exatamente esta questão em **P.6 —
+"Realistically Small Validation Sets"**:
+
+> *"often the validation set (data used for tuning hyperparameters and not model
+> parameters) is significantly larger than the training set. (…) Many papers
+> that evaluate SSL methods on SVHN use only 1,000 labels from the training
+> dataset but retain the full validation set. **The validation set is thus over
+> seven times bigger than the training set.** Of course, in real-world
+> applications, this large validation set would instead be used as the training
+> set."*
+
+O nosso caso é **pior que o exemplo deles**: 1792 janelas de validação contra 6
+de treino em `n_shots=1` é uma razão de ~300×, não de 7×.
+
+A §4.6 dá a régua quantitativa, via desigualdade de Hoeffding
+`P(|V̄ − E[V]| < p) > 1 − 2·exp(−2np²)`:
+
+> *"if we want to be 95% confident that our estimate of the validation error
+> differs by less than 1% absolute of the true value, we would need nearly
+> **20,000 validation examples**."*
+
+E a conclusão empírica (figs. 5-6, validações reamostradas de tamanhos
+decrescentes):
+
+> *"For realistically small validation sets under this setting, the overlap
+> between the error bounds with small validation sets still surpasses the
+> difference between the error for different models. Thus, we still argue that
+> with realistically small validation sets, **model selection may not be
+> feasible.**"*
+
+Aplicando a fórmula ao nosso split (n = 1792 no RealWorld_thigh): p ≈ **±3,2 pp**
+a 95% de confiança para a estimativa **absoluta** de um modelo. Comparações
+**pareadas** no mesmo conjunto são bem mais apertadas que isso (os erros são
+correlacionados), e é por isso que todo Δ do projeto é pareado por seed — mas o
+número serve de piso de sanidade para quanto vale uma diferença medida.
+
+**Quando revisitar.** Antes de fechar a seção de método do artigo, e antes de a
+ladder few-shot entrar no eixo federado — lá o problema é pior, porque o
+orçamento rotulado é por cliente. Se ficar como está, a seção de método precisa
+declarar o protocolo explicitamente, em vez de deixar implícito, e citar B10 como
+a limitação conhecida que se está aceitando.
+
+**Duas obrigações adicionais que o B10 impõe ao braço Fed-SSL** (não são sobre
+validação, mas vêm do mesmo paper e valem registrar aqui):
+
+- **P.2 — baseline supervisionado bem-tunado.** *"When given equal budget for
+  tuning hyperparameters, the gap in performance between using SSL and using
+  only labeled data is smaller than typically reported."* O nosso FedAvg
+  supervisionado tem de receber o mesmo esforço de ajuste que o braço Fed-SSL,
+  senão o Δ mede orçamento de tuning.
+- **Baseline de transfer.** *"pre-training a classifier on a different labeled
+  dataset and then retraining on only labeled data from the dataset of interest
+  can outperform all SSL algorithms we studied."* Nós **já temos** esse baseline
+  medido (`supervised_eval_transfer.csv`, matriz de transfer). Ele precisa
+  aparecer na comparação do Fed-SSL, não só o baseline in-domain.
+
 ### F4 — NOTA · FedAvg agrega buffers de BatchNorm
 
 `get_parameters` serializa `state_dict().values()` — inclui `running_mean/var`
@@ -252,6 +357,13 @@ afirmar que a implementação segue Zhang et al. / Sui et al. ao pé da letra.
 5. **Freeze**: "congelar" = `requires_grad=False` apenas; BN do backbone segue
    atualizando estatísticas com os dados do downstream (semântica do
    `SimpleSupervisedModel`). Relevante ao interpretar o linear readout.
+6. **Seleção no regime few-shot**: o benchmark subamostra só o treino e
+   seleciona no split de validação inteiro; SimCLR não seleciona e TF-C escala
+   a validação com o orçamento. Divergência **deliberada**, mantida pela mesma
+   razão das anteriores — ver **F7** para o detalhe e a prioridade de revisão.
+   Diferente das outras desta seção, esta afeta a magnitude dos números
+   reportados (quanto menor o `n_shots`, mais otimista), então a seção de
+   método tem de declarar o protocolo em vez de deixá-lo implícito.
 
 ## 5. Recomendações (mínimas, em ordem de prioridade)
 

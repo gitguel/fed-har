@@ -481,6 +481,8 @@ abstract nesta análise — "ler" aqui = leitura integral com fichamento.
 | B6 | Rodrigues da Silva et al., *Impact of Pre-training Datasets (CPC)*, BRACIS 2024 | 2 | trabalho do grupo; origem do desenho comb→target |
 | B7 | Eldele et al., *TS-TCC*, IJCAI 2021 | 3 | encoder tstcc vem daqui; citar corretamente |
 | B8 | Yue et al., *TS2Vec*, AAAI 2022 | 3 | citado no benchmark; melhor teto @100% — contexto |
+| B9 | Chen et al., *SimCLR*, ICML 2020 | 2 | referência do protocolo semi-supervisionado: **não seleciona época** (Ap. B.5, orçamento fixo por regime) e desconta a validação do treino. Baixado 2026-07-28 |
+| B10 | **Oliver et al.**, *Realistic Evaluation of Deep Semi-Supervised Learning Algorithms*, NeurIPS 2018 ([arXiv:1804.09170](https://arxiv.org/abs/1804.09170)) | **1** | **a referência do problema F7**: nomeia e quantifica o viés de validação grande demais (P.6, §4.6) e dá a régua de Hoeffding para dimensionar o conjunto de seleção. Também obriga baseline supervisionado bem-tunado (P.2) e baseline de transfer. Baixado 2026-07-28 |
 
 #### Bloco C — Federated Self-Supervised Learning (o coração)
 

@@ -36,7 +36,7 @@ unzip -o daghar_standardized_view.zip -d datasets/DAGHAR/
 rm daghar_standardized_view.zip
 ```
 
-## Running Notebooks
+## Notebooks
 
 ```bash
 # Start Jupyter in the notebooks/ directory
@@ -44,6 +44,14 @@ poetry run jupyter notebook notebooks/
 ```
 
 Notebooks add the project root to `sys.path` manually at the top — this is the expected pattern since there is no installable source package.
+
+**Os notebooks são editados à mão, direto no `.ipynb`.** Não existe mais o padrão
+de *builder script* (`notebooks/_build_*_nb.py` gerando o `.ipynb`) — os três
+builders foram removidos em 2026-07-28. Crie e edite o `.ipynb` diretamente; não
+recrie geradores.
+
+Notebooks são **somente leitura de cache**: leem `results/` e plotam, nunca
+treinam nem escrevem em `results/`. Quem produz número é script em `scripts/`.
 
 ## Estrutura do projeto (`scripts/`)
 

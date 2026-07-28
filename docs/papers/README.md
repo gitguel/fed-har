@@ -19,6 +19,20 @@ só o registro do que foi de fato baixado e lido.
 Os três foram lidos para a conferência de ineditismo do piso de batch: **nenhum
 antecipa o achado** (`../estado_da_arte.md §3.4`).
 
+⚠️ **Os três arquivos acima não estão mais no disco** (verificado 2026-07-28) —
+a tabela ficou desatualizada. O que existe hoje são 23 PDFs; use
+`find docs/papers -name '*.pdf'` em vez desta tabela.
+
+## Baixados em 2026-07-28 (protocolo de avaliação com poucos rótulos)
+
+| Arquivo | Referência | Estado |
+|---|---|---|
+| `B_SSL/B9_Chen_SimCLR.pdf` | T. Chen, S. Kornblith, M. Norouzi, G. Hinton, *A Simple Framework for Contrastive Learning of Visual Representations*, ICML 2020. arXiv:2002.05709 | ✅ lido no que importa (Ap. B.5/B.6, §6.2) — **não seleciona época** no regime semi-supervisionado; épocas fixas por regime (60 @1%, 30 @10%) |
+| `B_SSL/B10_Oliver_RealisticSSL.pdf` | A. Oliver, A. Odena, C. Raffel, E. D. Cubuk, I. J. Goodfellow, *Realistic Evaluation of Deep Semi-Supervised Learning Algorithms*, NeurIPS 2018. arXiv:1804.09170 | ✅ lido (P.2, P.6, §4.6, §5) — **referência canônica do F7**; régua de Hoeffding para dimensionar o conjunto de seleção |
+
+Os dois entraram na sabatina do protocolo few-shot; o resultado está em
+`../metodo_e_auditoria.md` **F7** e §4 item 6.
+
 ## Convenção de nomes
 
 `<bloco><n>_<primeiro autor>_<apelido>.pdf`, com o código vindo da lista de
