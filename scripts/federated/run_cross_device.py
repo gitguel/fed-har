@@ -43,14 +43,31 @@ import torch
 from lightning.pytorch import seed_everything
 from torch.utils.data import ConcatDataset, DataLoader
 
-from common import BATCH_SIZE, BEST_LR, PROJECT_ROOT, SEEDS
+from common import BATCH_SIZE, BEST_LR, PROJECT_ROOT, SEEDS, make_datamodule
 from eval_transfer import BUILD_MODEL, DEVICE, evaluate, test_loader
 from federated.cross_device import DEFAULT_BUDGET, make_clients, parse_spec
 from pretrain_fed import fedavg, state_bytes
 
 CACHE = PROJECT_ROOT / "results" / "fed_cross_device.csv"
 COLS = ["encoder", "spec", "budget", "seed", "local_epochs", "round", "target",
-        "test_acc", "test_f1_macro", "uplink_mb", "downlink_mb"]
+        "test_acc", "test_f1_macro", "val_acc", "val_f1_macro",
+        "uplink_mb", "downlink_mb"]
+
+_val_loaders: dict = {}
+
+
+def val_loader(dataset: str):
+    """`validation.csv` do alvo — split de seleção, nunca de reporte.
+
+    Existe para que o `best.ckpt` seja escolhido **sem olhar o teste**: com k=5 a
+    curva do FedAvg tem pico cedo e degrada, então "melhor rodada" é uma escolha
+    real de modelo, e fazê-la no teste inflaria o número reportado.
+    """
+    if dataset not in _val_loaders:
+        dm = make_datamodule(dataset, seed=0, num_workers=0)
+        dm.setup("fit")
+        _val_loaders[dataset] = dm.val_dataloader()
+    return _val_loaders[dataset]
 
 
 def set_deterministic() -> None:
@@ -104,8 +121,14 @@ def _eval_all(model: torch.nn.Module, targets: list[str]) -> list[tuple[str, flo
     return [(t, *evaluate(model, test_loader(t))) for t in targets]
 
 
+def _eval_val(model: torch.nn.Module, targets: list[str]) -> list[tuple[str, float, float]]:
+    model = model.to(DEVICE).eval()
+    return [(t, *evaluate(model, val_loader(t))) for t in targets]
+
+
 def run(spec: str, encoder: str, rounds: int, local_epochs: int, seed: int,
-        budget: int | None, targets: list[str], num_workers: int = 0) -> pd.DataFrame:
+        budget: int | None, targets: list[str], num_workers: int = 0,
+        ckpt_dir: Path | None = None) -> pd.DataFrame:
     seed_everything(seed, workers=True)
     clients = make_clients(spec, seed, budget=budget)
     weights = [len(shard) for _, shard in clients]
@@ -119,6 +142,7 @@ def run(spec: str, encoder: str, rounds: int, local_epochs: int, seed: int,
           f"{mb:.2f} MB/cliente/rodada/sentido ===", flush=True)
 
     rows = []
+    best_val, best_round = -1.0, -1
     for r in range(1, rounds + 1):
         t0 = time.time()
         states = [
@@ -127,16 +151,36 @@ def run(spec: str, encoder: str, rounds: int, local_epochs: int, seed: int,
             for ci, (_cid, shard) in enumerate(clients)
         ]
         global_state = fedavg(states, weights)
-        scores = _eval_all(_fresh(encoder, global_state), targets)
+        model = _fresh(encoder, global_state)
+        scores = _eval_all(model, targets)
+        vscores = {t: (a, f) for t, a, f in _eval_val(model, targets)}
         for tgt, acc, f1 in scores:
+            vacc, vf1 = vscores[tgt]
             rows.append({"encoder": encoder, "spec": spec,
                          "budget": budget if budget is not None else "natural",
                          "seed": seed, "local_epochs": local_epochs, "round": r,
                          "target": tgt, "test_acc": acc, "test_f1_macro": f1,
+                         "val_acc": vacc, "val_f1_macro": vf1,
                          "uplink_mb": mb * len(clients),
                          "downlink_mb": mb * len(clients)})
+
+        # Seleção do `best` na validação (média sobre os alvos do spec) — o teste
+        # nunca entra na decisão, só no reporte.
+        mean_val = sum(a for a, _ in vscores.values()) / len(vscores)
+        if ckpt_dir is not None and mean_val > best_val:
+            best_val, best_round = mean_val, r
+            ckpt_dir.mkdir(parents=True, exist_ok=True)
+            torch.save({"state_dict": global_state, "round": r,
+                        "val_acc_mean": mean_val, "encoder": encoder,
+                        "spec": spec, "seed": seed, "local_epochs": local_epochs},
+                       ckpt_dir / "best.ckpt")
         print(f"[r{r}/{rounds}] {time.time() - t0:5.1f}s | "
-              + ", ".join(f"{t}={a:.4f}" for t, a, _ in scores), flush=True)
+              + ", ".join(f"{t}={a:.4f}" for t, a, _ in scores)
+              + f" | val={mean_val:.4f}" + (" *" if best_round == r else ""),
+              flush=True)
+    if ckpt_dir is not None:
+        print(f"  best.ckpt = rodada {best_round} (val {best_val:.4f}) -> {ckpt_dir}",
+              flush=True)
     return pd.DataFrame(rows, columns=COLS)
 
 
@@ -194,6 +238,9 @@ def main() -> None:
     ap.add_argument("--num-workers", type=int, default=0)
     ap.add_argument("--out", default=None,
                     help="CSV de saída (parcial por-run). Default: cache global.")
+    ap.add_argument("--ckpt-dir", default=None,
+                    help="Se dado, salva o `best.ckpt` (melhor rodada pela "
+                         "validação) em <ckpt-dir>/seed<N>/. Sem isto, nada é salvo.")
     ap.add_argument("--gate", action="store_true",
                     help="Roda o G-EQ1 (1 cliente, R=1 ≡ centralizado) e sai.")
     args = ap.parse_args()
@@ -208,7 +255,9 @@ def main() -> None:
         sys.exit(0 if ok else 1)
 
     frames = [run(args.spec, args.encoder, args.rounds, args.local_epochs, s,
-                  budget, targets, args.num_workers) for s in args.seed]
+                  budget, targets, args.num_workers,
+                  ckpt_dir=Path(args.ckpt_dir) / f"seed{s}" if args.ckpt_dir else None)
+              for s in args.seed]
     new = pd.concat(frames, ignore_index=True)
     cache_path = Path(args.out) if args.out else CACHE
     cache = pd.read_csv(cache_path) if cache_path.exists() else pd.DataFrame(columns=COLS)

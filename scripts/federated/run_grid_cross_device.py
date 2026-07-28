@@ -32,6 +32,7 @@ RUNNER = Path(__file__).resolve().parent / "run_cross_device.py"
 LOG_DIR = PROJECT_ROOT / "logs" / "fed_cross_device"
 CACHE = PROJECT_ROOT / "results" / "fed_cross_device.csv"
 PART_DIR = PROJECT_ROOT / "results" / "fed_cross_device_parts"
+CKPT_DIR = PROJECT_ROOT / "checkpoints" / "fed_cross_device"
 KEY = ["encoder", "spec", "budget", "seed", "local_epochs", "round", "target"]
 
 # Os 6 braços da grade (o 7º, `single:*`, é o gate — roda à parte, com --gate).
@@ -104,12 +105,13 @@ def main() -> None:
                         skipped += 1
                         continue
                     label = f"{encoder}_{spec.replace(':', '-')}_k{k}_seed{seed}"
+                    ckpt = CKPT_DIR / encoder / spec.replace(":", "-") / f"k{k}"
                     jobs.append(Job(label, [
                         sys.executable, str(RUNNER),
                         "--spec", spec, "--encoder", encoder,
                         "--rounds", str(args.rounds), "--local-epochs", str(k),
                         "--seed", str(seed), "--budget", str(args.budget),
-                        "--out", str(part),
+                        "--out", str(part), "--ckpt-dir", str(ckpt),
                     ], LOG_DIR / f"{label}.log"))
 
     print(f"[GRID] {len(jobs)} jobs a rodar ({skipped} já completos) em {len(gpus)} GPUs.",
