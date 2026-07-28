@@ -2,8 +2,9 @@
 
 *Consolidado em 2026-07-27 a partir de `desenho_cross_device.md` (2026-07-24),
 `_arquivo/limite_batch_cliente_fssl.md` (2026-07-24) e da parte viva de
-`_arquivo/plano_fedssl_simulado.md` (2026-07-13/14). É o documento que dita o
-próximo passo de implementação.*
+`_arquivo/plano_fedssl_simulado.md` (2026-07-13/14); §2.1–2.3 e §4.3 vêm da
+sabatina de 2026-07-27/28. É o documento que dita o próximo passo de
+implementação.*
 
 **Contexto do pivô (2026-07-21, com o orientador):** a federação **cross-silo**
 (1 dataset por cliente, cenários 1–8) foi abandonada como desenho e como
@@ -80,6 +81,177 @@ O que isola um efeito **não é a célula, é o Δ contra o controle certo**:
 controle pareado — incluindo o shards-IID para feature skew, (b) o braço de label
 skew pareado em volume, e (c) label skew tratado como construto do estágio
 rotulado, o desenho fatorial fecha os três eixos de forma isolada e é publicável.
+
+### 2.1 Protocolo de pareamento dos braços (decidido na sabatina de 2026-07-27)
+
+O Δ(cross-domain − in-domain) com os dados naturais **não** mede domain shift: o
+braço cross-domain teria 27 clientes e 13.896 janelas contra 10 clientes e 10.338
+do RW_thigh — 2,7× mais clientes e 34% mais dado. Pior, o FedAvg pondera por
+`n_k` e um usuário do RW_thigh vale ~5× um do MotionSense, então o "cross-domain"
+seria dominado por um domínio só (MotionSense: 63% dos clientes, ~26% do peso).
+
+**Decisão: parear nº de clientes E orçamento por cliente.**
+
+| | |
+|---|---|
+| **Clientes por braço** | **10** (teto imposto pelo RW_thigh, que só tem 10 usuários) |
+| **Orçamento por cliente** | **B = 192 janelas** |
+| **Braços** | `10+0` (in-domain RW_thigh), `0+10` (in-domain MotionSense), `5+5` (cross-domain) |
+| **Amostragem** | aleatória **estratificada por classe**, determinística por seed, **proporcional** à distribuição natural do usuário |
+| **Elegibilidade** | usuário com ≥ B janelas no `train`: RW_thigh **10/10**, MotionSense **14/17** |
+
+Assim os três braços têm o mesmo nº de clientes, o mesmo volume por cliente, o
+mesmo volume total (1.920 janelas) e **pesos FedAvg uniformes** — muda só a
+composição de domínio. O preço, a declarar no artigo: descartamos ~81% do dado do
+RW_thigh, e as acurácias absolutas ficam bem abaixo das centralizadas.
+
+**Por que B = 192:** são exatamente **3 batches de 64** com `drop_last=True` — dá
+ao TF-C mais de um passo de gradiente por época local sem chegar perto do piso de
+batch (§3).
+
+**Por que não balancear as classes por cliente** (32/32/32…): (i) é **inviável** —
+só 4 dos 17 usuários do MotionSense têm 32 janelas em *todas* as classes (mínimo
+do dataset: 16), e precisamos de 10; (ii) é **desnecessário** — as duas bases já
+são globalmente uniformes (1/6 exato por classe; TV entre elas = **0.000**), o
+DAGHAR já balanceou.
+
+**Por que amostragem aleatória e não as primeiras N janelas** (prefixo temporal),
+verificado no dado em 2026-07-27:
+
+1. **As janelas não se sobrepõem** (0 amostras compartilhadas entre janelas
+   consecutivas da mesma sessão) — não existe "janela cortada no meio" a proteger.
+2. **O modelo nunca vê a ordem**: a entrada é uma janela isolada `(6,60)`, sem
+   modelagem entre janelas.
+3. **O prefixo enviesaria por sessão**: no MotionSense, **todos** os 102 pares
+   (usuário, classe) têm 2–3 sessões de gravação distintas (ex.: usuário 2,
+   escada-acima = 12 + 15 + 6 janelas em três arquivos). Um prefixo puxa a sessão
+   mais antiga e faz a amostra representar *uma condição de gravação* em vez da
+   pessoa — contaminando exatamente a variabilidade entre pessoas que o
+   experimento mede.
+4. **Custo de código**: os dois datasets ordenam por mecanismos diferentes
+   (`accel-start-time` no RealWorld, `csv` + `window` no MotionSense) — dois
+   caminhos e um lugar novo para bug silencioso.
+
+⚠️ **Armadilha de implementação:** `few_shot_indices` (`scripts/common.py:182`)
+**degrada em silêncio** quando uma classe tem menos amostras que o pedido ("usa
+todas as disponíveis"). Num desenho pareado isso quebraria o pareamento sem
+avisar — o helper de orçamento precisa de `assert` explícito de que o cliente
+fechou as B janelas.
+
+**Em aberto (ablação futura):** o cenário **natural**, sem parear — 10 / 17 / 27
+clientes com todo o dado. Responde uma pergunta diferente e legítima ("o que
+acontece com os dados que você realmente tem"), e não substitui o pareado. Rodar
+depois, e nunca escrever a frase do pareado usando o número do natural.
+
+### 2.2 Os braços e o que cada Δ mede
+
+| Braço | `spec` | Clientes | Janelas do alvo (lendo alvo = RW) |
+|---|---|---|---|
+| `in10-RW` | `device:RealWorld_thigh:10` | 10 | 1.920 |
+| `in10-MS` | `device:MotionSense:10` | 10 | 0 |
+| `cross10+10` | `device:RealWorld_thigh+MotionSense:10+10` | 20 | 1.920 |
+| `cross5+5` | `device:RealWorld_thigh+MotionSense:5+5` | 10 | 960 |
+| `iid10-RW` | `iid:RealWorld_thigh:10` | 10 | 1.920 |
+| `iid10-MS` | `iid:MotionSense:10` | 10 | — |
+| gate | `single:RealWorld_thigh:10` | 1 | 1.920 |
+
+```
+Δ_custo-do-shift    = cross5+5   − in10-RW    # orçamento fixo: metade do alvo virou estrangeiro
+Δ_valor-estrangeiro = cross10+10 − in10-RW    # alvo constante, estrangeiro acrescentado
+Δ_feature-skew      = in10-RW    − iid10-RW   # mesmas janelas, só a partição muda
+```
+
+⚠️ **Confundidor a declarar no texto:** `cross10+10` tem 20 clientes e 3.840
+janelas contra 10 e 1.920 do `in10-RW`. Não existe federação com 20 clientes só
+de RW_thigh (a base tem 10 usuários), então o Δ é *"acrescentar um segundo
+domínio"* — e **não** *"dado estrangeiro vale tanto quanto dado próprio"*, que
+exigiria um in-domain de 3.840 janelas.
+
+### 2.3 Protocolo de treino local e comunicação (sabatina de 2026-07-28)
+
+**A unidade de trabalho local é a época efetiva de *backbone*, não a época bruta.**
+O LFR alterna: em `lfr.py:410-417`,
+`freeze_backbone = current_epoch % (predictor_training_epochs+1) != 0`. Com
+`predictor_training_epochs=5` a **época 0 treina o backbone** e as épocas 1–5
+treinam os preditores — nessa ordem. Como `local_pretrain` cria um Trainer novo a
+cada rodada, `current_epoch` reinicia em 0 para todo cliente em toda rodada:
+
+| `local_epochs` do LFR | Efeito por rodada |
+|---|---|
+| 1 | backbone treina; **preditores nunca treinam** — ficam na inicialização e a tarefa deixa de medir o backbone |
+| **6** | 1 época de backbone + 5 de preditor (ciclo completo) |
+| 30 | 5 épocas de backbone + 25 de preditor |
+
+Logo `local_epochs` do LFR **tem de ser múltiplo de 6**. Definindo `k` = épocas
+efetivas de backbone por rodada: **LFR `local_epochs = 6k`, TF-C `local_epochs = k`**
+(o TF-C não alterna — todo parâmetro recebe gradiente em toda época).
+
+**`k ∈ {1, 5}` em todos os experimentos.** `k=5` é o consenso da literatura —
+`E=5` é unânime em quatro papers primários:
+
+| Paper | Domínio | Épocas locais | Rodadas |
+|---|---|---|---|
+| FedSC (ICML'24) | imagem | 5 | 200 |
+| FedEMA/FedU (ICLR'22) | imagem | 5 | 100 |
+| Saeed et al. (IoT-J'21) | **sensores/HAR** | 5 | 30–50 |
+| FedST/FedOST (MM'24) | séries temporais, clientes = sujeitos | 5 | 100 |
+
+`k=1` é o extremo de sincronização máxima que **ninguém testa** — o par
+{consenso, extremo não explorado} é um enquadramento melhor que um `k` arbitrário.
+
+**`R = 100` rodadas**, com corte pela curva medida (avaliamos toda rodada, sem
+early stopping). É o valor do FedEMA e do FedST e cobre com folga o regime do
+Saeed (30–50), que é o vizinho mais parecido conosco.
+
+**Protocolo sequencial** (todo o pré-treino, depois o finetuning) — é o que os
+quatro papers fazem. O Saeed é explícito: *"We pre-train … and use the model as
+initialization for learning a downstream task"*.
+
+**Custo local medido** (2026-07-28, `resnetse5`, MX570A, regime estacionário,
+B=192 = 3 batches):
+
+| | ms/época bruta | ms por época efetiva de backbone |
+|---|---|---|
+| LFR | **42,7** | 256,3 (= 6 brutas) |
+| TF-C | 218,9 | 218,9 (= 1 bruta) |
+
+A época do LFR custa **0,20×** a do TF-C (em 5 de 6 épocas não há backward pelo
+backbone), então **a alternância 6× é quase exatamente cancelada**: por época
+efetiva de backbone os dois custam **1,01–1,17×** um do outro. O "LFR treina 6×
+mais localmente" não é custo real de computação.
+
+⚠️ **O custo do LFR está na comunicação, e a maior parte é evitável.**
+
+Medir isto tem uma armadilha: o `build_lfr` cria **60 projetores** (38,25 MiB,
+96,2% do state_dict), mas o `build_global_model` roda a **seleção DPP e reduz
+para 6** *antes* de qualquer transmissão. O objeto de 38 MiB **nunca trafega** —
+medir nele superestima o custo em ~9×. O que de fato vai na rede é o pós-DPP:
+
+| | MiB por cliente por rodada | 10 clientes |
+|---|---|---|
+| LFR sem skip | 4,26 (projetores **86,3%**, backbone 0,49, preditores 0,10) | 42,65 |
+| **LFR com skip** | **0,58** | 5,84 |
+| TF-C | 1,36 | 13,62 |
+
+Os projetores são funções aleatórias **congeladas** e **idênticas em todos os
+clientes** (DPP feita uma vez pelo servidor; `num_targets=None` nas cópias impede
+re-seleção), então agregá-los é um no-op. Com
+**`fedavg(skip_prefixes=("projectors",))`** — já aplicado automaticamente ao LFR
+em `pretrain_fed.py` — o custo cai **7,3×**, e o LFR passa a ser **2,3× mais
+barato que o TF-C** por rodada, não empatado.
+
+Isto **corrige o achado F5 de `estado_da_arte.md`**, que antecipava "LFR federado
+é caro em uplink (pelos preditores)". Medido: os preditores custam 0,10 MiB (2,2%);
+o caro são os projetores, que não precisam trafegar. Com a exclusão, **o LFR é o
+método mais barato dos dois** — o oposto do que o projeto vinha assumindo.
+
+**Variante registrada, fora da 1ª onda:** cronograma **alternado** entre estágios
+(blocos de rodadas de pré-treino intercalados com blocos de finetuning) em vez de
+sequencial. Nenhum dos quatro papers faz isso; a alternativa que a literatura
+estuda é *joint training* (as duas perdas simultâneas — arXiv:2607.13192). Só faz
+sentido se o finetuning atualizar o backbone (com linear probe é no-op), e
+confunde atribuição. É candidata a **contribuição nomeada** (responde a W1 em
+`estado_da_arte.md §7.2`), mais original que `fedbn` — mas depois da 1ª onda.
 
 ## 3. O piso de batch: o cliente mínimo viável em FSSL é um *batch*
 
@@ -200,7 +372,7 @@ CLI: `--method {lfr,tfc} --encoder --partition --combo --rounds --local-epochs
   `results/ssl_fed_parts/`; `downstream_eval.py` precisa ganhar `--ckpt-dir`
   explícito (hoje restringe `--pretrain-source` a `SOURCES`).
 
-### 4.2 Partições — e a lacuna que bloqueia o experimento 3
+### 4.2 Partições — a API herdada do cross-silo
 
 `make_ssl_client_datasets(partition, combo, seed)`
 (`scripts/federated/partitions.py:150`) já implementa:
@@ -209,18 +381,40 @@ CLI: `--method {lfr,tfc} --encoder --partition --combo --rounds --local-epochs
 - `iid` — união do combo em 6 fatias IID (gate G-IID);
 - `device-<dataset>` — 1 cliente por usuário do train, **de um único dataset**.
 
-> ⚠️ **Lacuna registrada em 2026-07-27:** `device-<dataset>` exige um dataset só
-> (`partitions.py` valida `dataset_name in names` e chama `_user_shards` para ele).
-> O **experimento 3 do §5 — RW_thigh + MotionSense federados juntos, clientes =
-> usuários dos dois** — **não é expressável pela API atual**. Falta um modo tipo
-> `device` (todos os datasets do combo, união dos usuários, id de cliente
-> prefixado pelo dataset). É a primeira mudança de código a fazer.
+> ✅ **Lacuna fechada em 2026-07-28** por `scripts/federated/cross_device.py`, que
+> implementa a função única `make_clients(spec, seed, budget=192)` usada pelos
+> **dois** braços (supervisionado e SSL) — ver §4.3. A `make_ssl_client_datasets`
+> fica só para o eixo cross-silo herdado.
 >
-> Faltam também os dois controles derivados do §2: **shards-IID intra-dataset**
-> (para isolar feature skew — o `iid` atual fatia a união do combo, não um dataset
-> só) e o braço de **label skew artificial pareado em volume**.
+> Continua faltando o braço de **label skew artificial pareado em volume** (§2).
 
-### 4.3 Gates de validação (herdados, ainda válidos)
+### 4.3 `scripts/federated/cross_device.py` — ✅ IMPLEMENTADO (2026-07-28)
+
+Função única `make_clients(spec, seed, budget=DEFAULT_BUDGET)` → `[(id, Subset)]`,
+com `spec = <modo>:<datasets>:<contagens>` (tabela dos braços em §2.2). Modos:
+`device` (1 cliente por usuário), `iid` (mesmas janelas reparticionadas) e
+`single` (mesmas janelas num cliente só, para o gate).
+
+- **Seleção fixa e aninhada** em `scripts/federated/client_selection.csv`
+  (versionado): uma permutação de usuários por dataset, sorteada uma vez com
+  `SELECTION_SEED = 20260727`. Os braços tomam prefixos ⇒ os 5 clientes de um
+  braço são subconjunto dos 10 do outro. Regerar com `--regenerate-selection`
+  **muda a população do experimento** — não fazer sem reportar.
+- **Elegibilidade a B=192** (do manifesto): RW_thigh 10/10, MotionSense 14/17,
+  WISDM 36/36, RW_waist 10/10, **UCI 0/21 e KuHar 0/57** — os usuários dessas duas
+  bases não têm 192 janelas. Irrelevante para a 1ª onda; **bloqueia o UCI** na
+  segunda, junto com o KuHar (§3).
+- `budget=None` devolve o cenário natural (ablação futura) na mesma função.
+- `--describe <spec>` monta o braço e imprime a composição sem treinar nada.
+
+Invariantes verificadas em 2026-07-28: aninhamento; `cross10+10` contém os dois
+`in10`; **`iid` e `single` reusam exatamente as mesmas 1.920 janelas do `device`**
+(é isso que faz do `iid` um controle pareado); orçamento fechando em 192 por
+cliente com distribuição de classes proporcional; determinismo por seed; e seed
+trocando as janelas (~20% de sobreposição, o esperado por acaso) sem trocar os
+clientes.
+
+### 4.4 Gates de validação (herdados, ainda válidos)
 
 | # | O quê | Gate |
 |---|---|---|
@@ -232,18 +426,38 @@ CLI: `--method {lfr,tfc} --encoder --partition --combo --rounds --local-epochs
 | G-EQ2 | 1 cliente, R=100 × E=1 vs centralizado | quantifica o custo do fatiamento (reset do Adam) — número novo do artigo |
 | G-IID | `iid` 6 clientes, R=100 vs centralizado `combined` | Δ downstream @full ≥ −3 pp |
 
+**G-EQ1 executado em 2026-07-28 — ✅ PASS.**
+`run_cross_device.py --gate --spec single:RealWorld_thigh:10 --encoder resnetse5
+--local-epochs 3`: divergência máxima de peso **0,000e+00** e acc/F1 bit-idênticos
+entre o federado de 1 cliente e o centralizado. Valida de uma vez `make_clients`,
+o loop local e o `fedavg`.
+
+⚠️ **A primeira execução do gate REPROVOU** (divergência 7,7e-03), e a causa não
+era bug de agregação: o **cuDNN usa algoritmos não-determinísticos** no backward
+das convoluções, então dois treinos idênticos na GPU divergem ~1e-2 depois de
+poucas épocas. O gate agora chama `set_deterministic()` (cudnn determinístico +
+`use_deterministic_algorithms` + `CUBLAS_WORKSPACE_CONFIG`, que **precisa estar no
+ambiente antes de o CUDA inicializar**). Fora do gate não é obrigatório — a grade
+tem 4 seeds e essa variação entra na barra de erro —, mas **qualquer alegação de
+reprodutibilidade bit-a-bit exige esses flags**.
+
 Regra de sempre: **medir o 1º job de cada onda antes de extrapolar custo**; tmux +
 `tee logs/` (ver `CLAUDE.md`).
 
 ## 5. Escopo e ordem de execução
 
-1. **Fechar a lacuna da API de partições** (§4.2) — sem ela o experimento 3 não roda.
-2. **Os 3 controles, ignorando o KuHar**: (1) in-domain RW_thigh, (2) in-domain
-   MotionSense, (3) cross-domain RW_thigh+MotionSense. Nenhum inclui KuHar, então
-   o piso de batch não bloqueia. O controle honesto do custo de domain shift é
-   **Δ(3 − média de 1,2)**.
-3. **Controles extras** do §2: shards-IID intra-dataset (isola feature skew) e o
-   braço de label skew artificial pareado em volume.
+1. ~~**Fechar a lacuna da API de partições**~~ — **feito** (§4.3,
+   `scripts/federated/cross_device.py`, 2026-07-28).
+2. **Adaptar os dois runners para consumir `make_clients`**: o baseline
+   supervisionado (que sai do Flower — o loop local de `client.py:97` é torch puro
+   e o `fedavg()` já existe) e o `pretrain_fed.py` (hoje chama
+   `make_ssl_client_datasets`). Aplicar `skip_prefixes=("projectors",)` no LFR.
+3. **Rodar o gate** `single:RealWorld_thigh:10` com R=1: tem de reproduzir o
+   centralizado com a mesma seed. Só depois abrir a grade.
+4. **A grade**: 7 configs (§2.2) × `k ∈ {1,5}` × 4 seeds, começando por 1 encoder
+   e R=100 com corte pela curva. Nenhum braço inclui KuHar, então o piso de batch
+   não bloqueia.
+5. **Controle que falta** do §2: o braço de label skew artificial pareado em volume.
 4. **Depois**: endereçar o piso de batch (KuHar é o caso que o expõe) — **forma em
    aberto** (§3.3).
 5. **Segunda onda** (heterogeneidade por pessoa como eixo próprio): WISDM
