@@ -64,6 +64,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))      # .../scripts/ssl
 from common import BATCH_SIZE, PROJECT_ROOT, SEEDS  # noqa: E402
 from encoders import ENCODERS  # noqa: E402
 from federated.partitions import make_ssl_client_datasets, parse_combo  # noqa: E402
+from federated.cross_device import DEFAULT_BUDGET, make_clients  # noqa: E402
 from pretrain_lfr import build_lfr  # noqa: E402
 from pretrain_tfc import build_tfc  # noqa: E402
 
@@ -212,8 +213,16 @@ def extract_backbone_state(model: L.LightningModule, global_state: dict) -> dict
 def run_fedssl(method: str, encoder: str, partition: str, combo: str,
                rounds: int, local_epochs: int, seed: int,
                num_workers: int = 4, force: bool = False,
-               skip_prefixes: tuple[str, ...] = ()) -> Path:
-    out_dir = fed_ckpt_dir(method, encoder, partition, combo, seed)
+               skip_prefixes: tuple[str, ...] | None = None,
+               budget: int | None = DEFAULT_BUDGET) -> Path:
+    # Projetores do LFR: aleatórios, CONGELADOS e idênticos em todos os clientes
+    # (DPP feita uma vez pelo servidor). São 96,2% do state_dict — agregá-los é um
+    # no-op que custaria 38,6 MB por cliente por rodada em cada sentido.
+    # Ver docs/plano_fedssl.md §2.3.
+    if skip_prefixes is None:
+        skip_prefixes = ("projectors",) if method == "lfr" else ()
+
+    out_dir = fed_ckpt_dir(method, encoder, partition.replace(":", "-"), combo, seed)
     final_ckpt = out_dir / "backbone.ckpt"
     if final_ckpt.exists() and not force:
         print(f"[skip] backbone já existe: {final_ckpt}", flush=True)
@@ -221,7 +230,13 @@ def run_fedssl(method: str, encoder: str, partition: str, combo: str,
     out_dir.mkdir(parents=True, exist_ok=True)
 
     seed_everything(seed, workers=True)
-    clients = make_ssl_client_datasets(partition, combo, seed)
+    # `partition` no formato <modo>:<datasets>:<contagens> é o eixo cross-device
+    # (função única compartilhada com o baseline supervisionado); qualquer outro
+    # valor cai na API herdada do cross-silo.
+    if ":" in partition:
+        clients = make_clients(partition, seed, budget=budget)
+    else:
+        clients = make_ssl_client_datasets(partition, combo, seed)
     weights = [len(shard) for _, shard in clients]
     union = ConcatDataset([shard for _, shard in clients])
     template = build_global_model(method, encoder, union)
@@ -278,8 +293,11 @@ def main() -> None:
     parser.add_argument("--method", choices=METHODS, required=True)
     parser.add_argument("--encoder", choices=ENCODERS, required=True)
     parser.add_argument("--partition", required=True,
-                        help="silo | iid | device-<dataset>")
-    parser.add_argument("--combo", required=True,
+                        help="cross-device: <modo>:<datasets>:<contagens> "
+                             "(ex.: device:RealWorld_thigh:10). Herdado: silo | iid | device-<dataset>")
+    parser.add_argument("--budget", type=int, default=DEFAULT_BUDGET,
+                        help="Janelas por cliente no eixo cross-device (0 = natural, sem parear).")
+    parser.add_argument("--combo", default="",
                         help="Datasets unidos por '+', 'all6' ou 'lodo-<dataset>'.")
     parser.add_argument("--rounds", type=int, required=True)
     parser.add_argument("--local-epochs", type=int, required=True,
@@ -290,11 +308,13 @@ def main() -> None:
                         help="Re-treina mesmo com backbone/resume existentes.")
     args = parser.parse_args()
 
-    parse_combo(args.combo)  # valida cedo
+    if ":" not in args.partition:
+        parse_combo(args.combo)  # valida cedo (só no eixo herdado)
     for seed in args.seed:
         run_fedssl(args.method, args.encoder, args.partition, args.combo,
                    args.rounds, args.local_epochs, seed,
-                   num_workers=args.num_workers, force=args.force)
+                   num_workers=args.num_workers, force=args.force,
+                   budget=args.budget or None)
 
 
 if __name__ == "__main__":
