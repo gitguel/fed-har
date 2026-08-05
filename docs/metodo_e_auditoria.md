@@ -276,6 +276,35 @@ e `paper_experiments/to_be_validated/<téc>/<run>/configs/overrides/*.csv`.
 | Batch / drop_last | 64 / **True** (default do `HARDataModuleCPC`, não sobrescrito no config TF-C) | 64 / True | ✅ — o que tratávamos como "desvio necessário" na verdade **coincide com o benchmark** |
 | Corpus | view `rodrigues_2024/no_overlap_daghar_standardized_balanced` (≠ da view do LFR!) | `standardized_view` train+val | ⚠️ desvio D1 (§3) |
 
+#### Como ler qualquer número do TF-C (instrução, não desvio)
+
+O backbone composto do TF-C tem **2,2–4,0× os parâmetros** do modelo supervisionado
+com o mesmo encoder — medido em 2026-07-29:
+
+| encoder | supervisionado (= probe LFR) | probe TF-C | razão |
+|---|---|---|---|
+| resnetse5 | 136.006 | 387.590 | 2,85× |
+| cnnpff | 145.830 | 587.462 | 4,03× |
+| rnn | 170.982 | 523.078 | 3,06× |
+| tstcc | 3.331.142 | 7.351.302 | 2,21× |
+
+Isso **não é escolha de dimensionamento nossa, nem desvio**: é constitutivo do
+método. O benchmark (§IV-B) é explícito — *"applying TF-C means training a
+composite backbone comprising two copies of the encoder network … As a result,
+downstream evaluation necessarily relies on this integrated architecture rather
+than on an isolated encoder … **performance differences observed under TF-C should
+be interpreted in light of this composite backbone configuration**"*. A Tabela 2
+repete a ressalva em nota de rodapé. "TF-C com um encoder só" não é TF-C, e o
+mesmo argumento inviabilizaria a comparação LFR vs TF-C, que o benchmark faz.
+
+**Convenção adotada (sabatina de 2026-07-29): seguimos o benchmark — declaramos, não
+compensamos.** Não existe braço de controle "TF-C do zero"; ele treinaria uma
+arquitetura que não existe na literatura e quebraria a compatibilidade célula-a-célula
+com o benchmark (F3 de `estado_da_arte.md`). Em contrapartida, o eixo federado tem um
+custo que o benchmark não mede — comunicação por rodada — e **ele é reportado ao lado
+da acurácia** (colunas `uplink_mb`/`downlink_mb`), que é o análogo federado da
+Tabela 15 do paper (*"roughly doubling the inference time and amount of MACs"*).
+
 ### 2.4 Downstream (freeze e full fine-tuning) — LFR e TF-C
 
 | Item | Benchmark (`finetune/*.yaml` + `overrides/models.csv`) | Nosso (`downstream_eval.py`) | Veredito |

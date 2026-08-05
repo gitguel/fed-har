@@ -186,8 +186,8 @@ Logo `local_epochs` do LFR **tem de ser múltiplo de 6**. Definindo `k` = época
 efetivas de backbone por rodada: **LFR `local_epochs = 6k`, TF-C `local_epochs = k`**
 (o TF-C não alterna — todo parâmetro recebe gradiente em toda época).
 
-**`k ∈ {1, 5}` em todos os experimentos.** `k=5` é o consenso da literatura —
-`E=5` é unânime em quatro papers primários:
+**`k = 5` em todos os experimentos.** É o consenso da literatura — `E=5` é
+unânime em quatro papers primários:
 
 | Paper | Domínio | Épocas locais | Rodadas |
 |---|---|---|---|
@@ -196,8 +196,14 @@ efetivas de backbone por rodada: **LFR `local_epochs = 6k`, TF-C `local_epochs =
 | Saeed et al. (IoT-J'21) | **sensores/HAR** | 5 | 30–50 |
 | FedST/FedOST (MM'24) | séries temporais, clientes = sujeitos | 5 | 100 |
 
-`k=1` é o extremo de sincronização máxima que **ninguém testa** — o par
-{consenso, extremo não explorado} é um enquadramento melhor que um `k` arbitrário.
+**A ablação `k=1` foi cortada em 2026-08-04** (decisão do Miguel: não é
+prioridade). O plano original pedia `k ∈ {1, 5}` com o argumento de que `k=1` é
+"o extremo de sincronização máxima que ninguém testa"; na prática ela nunca foi
+executada de verdade — o único `k=1` que existe no cache é um braço de
+calibração do baseline supervisionado (`fed_cross_device.csv`, `local_epochs=1`:
+**só `resnetse5`**, R=100, 32 células) e ele **não entra em análise nenhuma**,
+justamente por ser outro protocolo. Toda grade viva — Fed-SSL e baseline
+federado — roda `E=5`. Ressuscitar a ablação é grade nova, não recorte de cache.
 
 **`R = 100` rodadas**, com corte pela curva medida (avaliamos toda rodada, sem
 early stopping). É o valor do FedEMA e do FedST e cobre com folga o regime do
@@ -207,18 +213,41 @@ Saeed (30–50), que é o vizinho mais parecido conosco.
 quatro papers fazem. O Saeed é explícito: *"We pre-train … and use the model as
 initialization for learning a downstream task"*.
 
-**Custo local medido** (2026-07-28, `resnetse5`, MX570A, regime estacionário,
-B=192 = 3 batches):
+**Custo local — a medição de 2026-07-28 NÃO se sustentou.** ⚠️
 
-| | ms/época bruta | ms por época efetiva de backbone |
-|---|---|---|
-| LFR | **42,7** | 256,3 (= 6 brutas) |
-| TF-C | 218,9 | 218,9 (= 1 bruta) |
+A versão anterior desta seção media `resnetse5` na MX570A em "regime
+estacionário" e concluía que a época bruta do LFR custava **0,20×** a do TF-C,
+portanto que **"a alternância 6× é quase exatamente cancelada"** e que *"o LFR
+treina 6× mais localmente não é custo real de computação"*. **Isso está errado no
+hardware em que a grade roda.**
 
-A época do LFR custa **0,20×** a do TF-C (em 5 de 6 épocas não há backward pelo
-backbone), então **a alternância 6× é quase exatamente cancelada**: por época
-efetiva de backbone os dois custam **1,01–1,17×** um do outro. O "LFR treina 6×
-mais localmente" não é custo real de computação.
+Remedido em 2026-07-29 no **TITAN Xp**, no caminho real (`pretrain_fed.py`,
+`device:RealWorld_thigh:10`, 10 clientes, B=192 = 3 batches, GPU ociosa,
+`CUDA_DEVICE_ORDER=PCI_BUS_ID`), variando `--local-epochs` para separar custo por
+época de custo fixo por rodada:
+
+| método | R=1, le=1 | le=5 | le=6 | le=15 | le=30 | **s/época (10 clientes)** | intercepto |
+|---|---|---|---|---|---|---|---|
+| TF-C | 3,9 s | 15,8 s | — | 42,7 s | — | **2,77** | 1,1 s |
+| LFR | — | — | 14,0 s | — | 72,0 s | **2,42** | ~0 |
+
+A época bruta do LFR custa **0,87×** a do TF-C, não 0,20×. A economia das 5 épocas
+"só-preditor" não aparece porque, com orçamento de 192 janelas, **cada época tem 3
+batches** e o custo fixo da época (reinício do dataloader, loop de época do
+Lightning) domina o que se economiza no backward. O número antigo era um artefato
+de hardware e de regime de medição.
+
+**Consequência:** casando épocas **efetivas de backbone** (LFR `6k=30` contra TF-C
+`k=5`), o pré-treino LFR custa **4,6×** o do TF-C por rodada — 72,0 s contra
+15,8 s. Não é neutro, como esta seção afirmava; é o item dominante do orçamento da
+grade (~158 das ~200 GPU-h de pré-treino).
+
+A sabatina de 2026-07-29 **manteve `6k=30` mesmo assim**: o eixo de casamento
+correto é épocas efetivas de backbone, porque é o que determina quanto o backbone
+aprende por rodada. Casar por wall-clock (LFR `k=1`) economizaria ~265 GPU-h mas
+daria ao LFR 1/5 do treino de backbone do TF-C, e o Δ(LFR − TF-C) passaria a
+confundir método com orçamento. Custo de compute é o argumento mais fraco que
+existe para escolher protocolo.
 
 ⚠️ **O custo do LFR está na comunicação, e a maior parte é evitável.**
 

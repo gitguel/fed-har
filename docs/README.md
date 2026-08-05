@@ -1,6 +1,7 @@
 # `docs/` — índice
 
-Compactado em **2026-07-27**: 13 documentos viraram 6. O que foi superado está em
+Compactado em **2026-07-27**: 13 documentos viraram 6; o mapa de experimentos entrou
+em 2026-08-05, somando 7. O que foi superado está em
 [`_arquivo/`](_arquivo/) com um cabeçalho dizendo por que morreu e quem o
 substituiu — nada foi apagado.
 
@@ -9,6 +10,7 @@ substituiu — nada foi apagado.
 | Documento | Use quando precisar de… |
 |---|---|
 | [`dados_daghar.md`](dados_daghar.md) | **fatos** dos datasets: posição do sensor, classes por dataset, usuários, janelas por usuário, skews. É a fonte única — os outros docs citam este. |
+| [`mapa_experimentos.md`](mapa_experimentos.md) | **o que foi rodado**: as 4 federações e as 6 células de avaliação, as duas fases (pré-treino/fine-tuning), contagem total de runs e avaliações, e todo hiperparâmetro com o motivo da escolha. Comece por aqui quando se perder entre os braços. |
 | [`resultados.md`](resultados.md) | o que já foi **medido**: transfer centralizado, `comb2target`, o skyline SL-`combined`, e o preliminar federado cross-silo. |
 | [`plano_fedssl.md`](plano_fedssl.md) | o **próximo passo**: desenho fatorial cross-device, o piso de batch, a implementação e a ordem de execução. |
 | [`estado_da_arte.md`](estado_da_arte.md) | **posicionamento**: estado da arte de F-SSL, verificação de ineditismo, forças/fraquezas da contribuição, lista de leitura. |
