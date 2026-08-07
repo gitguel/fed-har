@@ -1,0 +1,33 @@
+spec,metodo,encoder,n,mediana,p,rbc,pos,p_bonf,sig
+device:MotionSense:10,LFR,resnetse5,5,0.78125,,,4,,—
+device:MotionSense:10,LFR,cnnpff,5,0.5126953125,,,4,,—
+device:MotionSense:10,LFR,rnn,5,5.7861328125,,,4,,—
+device:MotionSense:10,LFR,tstcc,5,4.8095703125,,,5,,—
+device:MotionSense:10,TF-C,resnetse5,5,-0.1953125,,,2,,—
+device:MotionSense:10,TF-C,cnnpff,5,5.712890625,,,5,,—
+device:MotionSense:10,TF-C,rnn,5,26.1962890625,,,5,,—
+device:MotionSense:10,TF-C,tstcc,5,5.029296875,,,5,,—
+device:RealWorld_thigh+MotionSense:10+10,LFR,resnetse5,10,1.64794921875,0.07421875,0.6296296296296297,6,0.59375,n.s.
+device:RealWorld_thigh+MotionSense:10+10,LFR,cnnpff,10,0.8379448784722214,0.154296875,0.5272727272727272,8,1.0,n.s.
+device:RealWorld_thigh+MotionSense:10+10,LFR,rnn,10,3.584526909722225,0.048828125,0.7090909090909091,9,0.390625,n.s.
+device:RealWorld_thigh+MotionSense:10+10,LFR,tstcc,10,3.4982638888888857,0.001953125,1.0,10,0.015625,SSL vence
+device:RealWorld_thigh+MotionSense:10+10,TF-C,resnetse5,10,2.491319444444443,0.009765625,0.8909090909090909,8,0.078125,n.s.
+device:RealWorld_thigh+MotionSense:10+10,TF-C,cnnpff,10,5.940212673611114,0.001953125,1.0,10,0.015625,SSL vence
+device:RealWorld_thigh+MotionSense:10+10,TF-C,rnn,10,24.105902777777782,0.001953125,1.0,10,0.015625,SSL vence
+device:RealWorld_thigh+MotionSense:10+10,TF-C,tstcc,10,-0.5995008680555536,0.375,-0.34545454545454546,5,1.0,n.s.
+device:RealWorld_thigh+MotionSense:5+5,LFR,resnetse5,10,1.9634331597222214,0.064453125,0.6727272727272727,8,0.515625,n.s.
+device:RealWorld_thigh+MotionSense:5+5,LFR,cnnpff,10,-0.0870768229166714,0.625,-0.2,4,1.0,n.s.
+device:RealWorld_thigh+MotionSense:5+5,LFR,rnn,10,0.7321506076388893,0.375,0.34545454545454546,5,1.0,n.s.
+device:RealWorld_thigh+MotionSense:5+5,LFR,tstcc,10,2.77099609375,0.013671875,0.8545454545454545,8,0.109375,n.s.
+device:RealWorld_thigh+MotionSense:5+5,TF-C,resnetse5,10,2.6611328125,0.10546875,0.6,7,0.84375,n.s.
+device:RealWorld_thigh+MotionSense:5+5,TF-C,cnnpff,10,3.967285156249993,0.001953125,1.0,10,0.015625,SSL vence
+device:RealWorld_thigh+MotionSense:5+5,TF-C,rnn,10,22.01470269097222,0.001953125,1.0,10,0.015625,SSL vence
+device:RealWorld_thigh+MotionSense:5+5,TF-C,tstcc,10,0.16465928819444642,0.76953125,0.12727272727272726,5,1.0,n.s.
+device:RealWorld_thigh:10,LFR,resnetse5,5,0.15625,,,4,,—
+device:RealWorld_thigh:10,LFR,cnnpff,5,0.3125,,,3,,—
+device:RealWorld_thigh:10,LFR,rnn,5,2.100694444444443,,,3,,—
+device:RealWorld_thigh:10,LFR,tstcc,5,6.267361111111114,,,4,,—
+device:RealWorld_thigh:10,TF-C,resnetse5,5,-0.53819444444445,,,2,,—
+device:RealWorld_thigh:10,TF-C,cnnpff,5,4.756944444444443,,,5,,—
+device:RealWorld_thigh:10,TF-C,rnn,5,18.489583333333336,,,5,,—
+device:RealWorld_thigh:10,TF-C,tstcc,5,1.5798611111111143,,,3,,—

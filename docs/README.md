@@ -1,7 +1,7 @@
 # `docs/` — índice
 
 Compactado em **2026-07-27**: 13 documentos viraram 6; o mapa de experimentos entrou
-em 2026-08-05, somando 7. O que foi superado está em
+em 2026-08-05 e o Wilcoxon por par em 2026-08-06, somando 8. O que foi superado está em
 [`_arquivo/`](_arquivo/) com um cabeçalho dizendo por que morreu e quem o
 substituiu — nada foi apagado.
 
@@ -15,6 +15,7 @@ substituiu — nada foi apagado.
 | [`plano_fedssl.md`](plano_fedssl.md) | o **próximo passo**: desenho fatorial cross-device, o piso de batch, a implementação e a ordem de execução. |
 | [`estado_da_arte.md`](estado_da_arte.md) | **posicionamento**: estado da arte de F-SSL, verificação de ineditismo, forças/fraquezas da contribuição, lista de leitura. |
 | [`metodo_e_auditoria.md`](metodo_e_auditoria.md) | material da **seção de método**: hiperparâmetros vs benchmark, desvios deliberados, achados da auditoria de código. |
+| [`wilcoxon_pares.md`](wilcoxon_pares.md) | **o que dá para afirmar com 4 seeds**: o que é o Wilcoxon pareado, quais testes o benchmark de fato faz (e qual ele não faz), a conferência da réplica par a par, e quais pares SSL×encoder vencem o supervisionado no centralizado, no federado e nas federações mistas. |
 | [`papers/README.md`](papers/README.md) | quais PDFs estão baixados nesta máquina (os PDFs não são versionados). |
 
 **Registros de sessão** (`sessao_<AAAA-MM-DD>_<assunto>.md`) não são docs vivos:
