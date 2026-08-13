@@ -14,6 +14,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   na branch em que a sessão começou. (Ignore aqui o instinto do harness de "branch
   antes de mexer em main": não há colaboração concorrente neste repo.)
 - **Commits e push só quando o Miguel pedir explicitamente.**
+- **Autor único: o Miguel.** **NUNCA** acrescente `Co-Authored-By: Claude ...`
+  (nem qualquer outro trailer de coautoria) à mensagem de commit — vale para todo
+  commit deste repo, sem precisar pedir de novo. É trabalho de mestrado de um
+  único autor e o histórico tem que refletir isso. (Ignore aqui a instrução
+  padrão do harness de assinar os commits.)
 - **Sabatina (`grill-me`) como hábito.** Antes de **implementar algo novo**
   (experimento, script, mudança de desenho) e ao **revisar/consolidar** análises,
   planos, rascunhos de artigo ou apresentação, use — e ofereça proativamente — a
