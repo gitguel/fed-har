@@ -329,6 +329,81 @@ def bloco_e(tb: pd.DataFrame, tc: pd.DataFrame) -> None:
     print(f"Concordância de sinal: {(j.concorda == 'sim').sum()}/8")
 
 
+def bloco_f(dc: pd.DataFrame, df: pd.DataFrame) -> pd.DataFrame:
+    """As configurações pareadas são independentes? Não — e aqui está o quanto.
+
+    O Wilcoxon **exige** dependência DENTRO do par (é o desenho pareado) e **assume
+    independência ENTRE os pares**. É a segunda que falha aqui: as 24 (ou 30)
+    configurações são um cruzado `domínio × regime`, e o mesmo domínio reaparece em
+    todos os regimes. Três medidas, nesta ordem:
+
+      1. **ICC / design effect** por eixo de agrupamento. `deff = 1 + (m−1)·ICC` e
+         `n_eff = n / deff` — quantos pares realmente independentes o `n` vale.
+      2. **Bootstrap por cluster**: reamostra domínios (ou regimes) INTEIROS com
+         reposição e refaz a mediana. O IC95 daí respeita a dependência; se ele
+         cruza o zero, o veredito do teste primário não é robusto ao agrupamento.
+      3. **Correlação entre os 8 testes** da família de Bonferroni: todos usam o
+         MESMO braço supervisionado como referência, então os Δ não são 8 medidas
+         independentes. Bonferroni não corrige isso (fica conservador).
+    """
+    print("\n" + "=" * 78)
+    print("F. DIAGNÓSTICO DE INDEPENDÊNCIA — o pressuposto que o teste faz")
+    print("=" * 78)
+    rng = np.random.default_rng(7)
+
+    def diffs(d, eixos):
+        g = d.groupby(["method", "encoder"] + eixos).acc.mean().unstack("method")
+        return pd.concat([(g[m] - g["sup"]).rename("d").reset_index().assign(metodo=LAB[m])
+                          for m in METODOS], ignore_index=True)
+
+    df = df.copy()
+    df["cel"] = df.spec + "|" + df.target
+    linhas = []
+    for nome, d, eixos in [("centralizado", diffs(dc, ["target", "n_shots"]),
+                            ["target", "n_shots"]),
+                           ("federado", diffs(df, ["cel", "n_shots"]), ["cel", "n_shots"])]:
+        for (met, enc), g in d.groupby(["metodo", "encoder"]):
+            r = dict(setup=nome, par=f"{met} + {enc}", n=len(g), mediana=float(np.median(g.d)))
+            for cl in eixos:
+                blocos = [x.d.values for _, x in g.groupby(cl)]
+                m = float(np.mean([len(b) for b in blocos]))
+                media = g.d.mean()
+                vb = float(np.mean([(b.mean() - media) ** 2 for b in blocos]))
+                vw = float(np.mean([b.var(ddof=1) for b in blocos]))
+                icc = vb / (vb + vw) if vb + vw > 0 else np.nan
+                # bootstrap de clusters inteiros
+                meds = [np.median(np.concatenate([blocos[i] for i in
+                                                  rng.integers(0, len(blocos), len(blocos))]))
+                        for _ in range(4000)]
+                lo, hi = np.percentile(meds, [2.5, 97.5])
+                eixo = "dom" if cl != "n_shots" else "reg"
+                r[f"icc_{eixo}"] = icc
+                r[f"neff_{eixo}"] = len(g) / (1 + (m - 1) * icc)
+                r[f"ic95_{eixo}"] = f"[{lo:+.1f},{hi:+.1f}]"
+                r[f"cruza0_{eixo}"] = "SIM" if lo <= 0 <= hi else "não"
+            linhas.append(r)
+    t = pd.DataFrame(linhas)
+    v = t.copy()
+    for c in ["mediana", "icc_dom", "icc_reg", "neff_dom", "neff_reg"]:
+        v[c] = v[c].map(lambda x: f"{x:.2f}")
+    print("\nICC = fração da variância do Δ que é do cluster · n_eff = n / (1+(m−1)·ICC)")
+    print("ic95 = bootstrap reamostrando CLUSTERS inteiros (dom = domínio/alvo, reg = regime)\n")
+    print(v.to_string(index=False))
+
+    print("\nCorrelação entre os 8 testes da família (mesma referência supervisionada):")
+    for nome, d, eixos in [("centralizado", diffs(dc, ["target", "n_shots"]),
+                            ["target", "n_shots"]),
+                           ("federado", diffs(df, ["cel", "n_shots"]), ["cel", "n_shots"])]:
+        piv = d.pivot_table(index=eixos, columns=["metodo", "encoder"], values="d")
+        C = piv.corr(method="spearman").values
+        iu = np.triu_indices_from(C, 1)
+        mesmo = [piv[("LFR", e)].corr(piv[("TF-C", e)], method="spearman") for e in ENCODERS]
+        print(f"  {nome}: ρ médio {C[iu].mean():+.2f} (min {C[iu].min():+.2f}, "
+              f"max {C[iu].max():+.2f}) · mesmo encoder LFR×TF-C: "
+              + ", ".join(f"{e} {r:+.2f}" for e, r in zip(ENCODERS, mesmo)))
+    return t
+
+
 # --------------------------------------------------------------------------- #
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
@@ -344,14 +419,16 @@ def main():
     tc = bloco_c(df)
     td = bloco_d(df)
     bloco_e(tb, tc)
+    tf = bloco_f(dc, df)
 
     if a.outdir:
         out = Path(a.outdir)
         out.mkdir(parents=True, exist_ok=True)
         for nome, t in [("replica_vs_tabela10", ta), ("wilcoxon_centralizado", tb),
-                        ("wilcoxon_federado", tc), ("wilcoxon_por_spec", td)]:
+                        ("wilcoxon_federado", tc), ("wilcoxon_por_spec", td),
+                        ("independencia", tf)]:
             t.to_csv(out / f"{nome}.csv", index=False)
-        print(f"\n[OK] 4 CSVs em {out}")
+        print(f"\n[OK] 5 CSVs em {out}")
 
 
 if __name__ == "__main__":

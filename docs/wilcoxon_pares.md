@@ -1,8 +1,11 @@
 # Wilcoxon pareado por par (técnica SSL × encoder)
 
-> Escrito em **2026-08-06**. Gerado por
+> Escrito em **2026-08-06**; §6 (o procedimento do teste) e §10 (o diagnóstico de
+> independência, bloco F do script) acrescentados em **2026-08-11**. Gerado por
 > [`scripts/analysis/wilcoxon_pares.py`](../scripts/analysis/wilcoxon_pares.py);
-> saídas em `results/derived/wilcoxon/`. Continuação direta da auditoria de
+> saídas em `results/derived/wilcoxon/` (5 CSVs, incluindo `independencia.csv`). **Figuras** em
+> [`notebooks/wilcoxon_pares.ipynb`](../notebooks/wilcoxon_pares.ipynb)
+> (somente leitura dos caches). Continuação direta da auditoria de
 > variância (§11–12 de `notebooks/fedssl_cross_device_avaliation.ipynb`), que
 > concluiu que a variância não está alta — o `n` de seeds é que está baixo — e
 > deixou "Wilcoxon pareado sobre células" na fila como a rota de custo zero.
@@ -76,7 +79,62 @@ Mas bater em nível não é o que autoriza o claim — o claim usa o **Δ**. Ent
 
 **Concordância de sinal 8/8, Spearman ρ = +0,98.** A ordem dos pares é praticamente idêntica, inclusive o único par negativo. Isso é o que dá direito de invocar o benchmark: não replicamos só o número, replicamos a *estrutura* do efeito.
 
-## 6. O Wilcoxon nos nossos dados
+## 6. Como decidimos "este par é melhor" — o procedimento exato
+
+Esta é a seção que justifica o veredito. Cinco decisões de desenho, cada uma com o
+motivo e com o que ela custa.
+
+**(1) A unidade pareada é a *configuração*, não a run.** Uma configuração é
+`dataset × regime de rótulos` no centralizado (24 delas: 6 × 4) e
+`spec × alvo × regime` no federado (30: 6 × 5). Cada braço da comparação é a **média
+das 4 seeds** daquela configuração. Só então se calcula o Δ.
+
+> Por que mediar as seeds antes de parear: 4 seeds da mesma configuração **não são 4
+> observações independentes** — são 4 medidas ruidosas *da mesma coisa*. Usá-las como
+> observações separadas quadruplica o `n` sem acrescentar informação, e o `p` encolhe
+> por pseudo-réplica. Rodei essa versão como **diagnóstico** (n = 96 e 120,
+> `por_seed=True` em `testa_pares`): ela não muda nenhum veredito, só espreme os `p`
+> — o que confirma que a inflação é artificial. **A versão com seeds mediadas é a
+> primária.**
+
+**(2) O par tem que existir nos dois braços.** O `dropna()` do `join` garante que só
+entram configurações medidas com SSL *e* com supervisionado, com o mesmo encoder e o
+mesmo protocolo de fine-tuning. É o que faz do Δ uma diferença *dentro* da célula,
+com tudo o mais constante — e é por isso que a dispersão gigante entre células
+(1-shot ~40% contra `full` ~85%) não entra no teste (§2).
+
+**(3) O teste é o Wilcoxon dos postos sinalizados, bilateral**, com
+`zero_method="wilcox"` (empates exatos descartados). **Bilateral** de propósito: a
+hipótese honesta é *"o SSL muda o resultado"*, não *"o SSL melhora"* — testar só o
+lado que interessa dobraria a taxa de erro na direção que queremos. Abaixo de **6
+pares** o teste nem roda (`_wilcoxon` devolve `NaN`): com n < 6 o piso de `p` já
+passa de 0,05 e o resultado seria decorativo.
+
+**(4) O tamanho de efeito vem junto — `rbc`.** É a correlação bisserial de postos,
+`(W⁺ − W⁻)/(W⁺ + W⁻) ∈ [−1, +1]`. O `p` sozinho responde "é sistemático?"; o `rbc`
+responde "quão consistente?". A coluna `Δ>0` (quantas configurações ficaram
+positivas) é a mesma informação em forma legível.
+
+**(5) A família de correção são os 8 pares, e a decisão é binária.** Todo `p` é
+multiplicado por 8 (Bonferroni) e o veredito sai de:
+
+```
+p_bonf < 0,05  e  Δ mediano > 0   →  "SSL vence"
+p_bonf < 0,05  e  Δ mediano < 0   →  "SSL perde"
+caso contrário                    →  "n.s."  (não distinguível — nunca "não ajuda")
+```
+
+Nos recortes por federação (§8) o Bonferroni é **recalculado dentro de cada spec** (8
+pares por federação), não herdado do teste global: são famílias de hipóteses
+diferentes, e reaproveitar a correção do global seria corrigir duas vezes.
+
+**O que este procedimento *não* decide.** Ele ordena cada par **contra o
+supervisionado**, um de cada vez. Ele **não** testa par contra par — dizer
+"TF-C+RNN é melhor que TF-C+CNN-PFF" exigiria um teste que não rodei (e é justamente
+o único que o benchmark roda, §3). O ranking das tabelas do §7 é descritivo; o que
+tem teste por trás é a coluna do veredito.
+
+## 7. O Wilcoxon nos nossos dados
 
 **Centralizado** (24 configurações = 6 datasets × 4 regimes, seeds mediadas):
 
@@ -108,7 +166,7 @@ E o **agregado por método** (empilhando os 4 encoders — a rota do da Luz): LF
 
 **Concordância centralizado ↔ federado: 7/8 de sinal, ρ = +0,79.** O único desalinhamento é LFR+cnnpff (−0,39 centralizado, +0,34 federado) — e os dois são não-significantes, então não é contradição, é ruído em torno de zero. A conclusão do benchmark **sobrevive à federação**, com um detalhe interessante: no federado *mais* pares passam, porque a nossa grade federada tem 30 configurações contra 24 e os efeitos são um pouco maiores.
 
-## 7. Sim, dá para concluir sobre 5+5 e 10+10
+## 8. Sim, dá para concluir sobre 5+5 e 10+10
 
 | par | 5+5 | 10+10 |
 |---|---|---|
@@ -123,14 +181,101 @@ Aqui aparece o limite duro que é preciso saber: com **n = 10** configurações,
 
 E as federações únicas (`RealWorld_thigh:10` e `MotionSense:10`) têm apenas **5** configurações. Piso de `p` = 0,0625, já acima de 0,05 antes de qualquer correção. **Nenhum resultado ali pode ser declarado significante, nem em princípio** — nem o TF-C+rnn com Δ de +26,2 pp e 5/5. Isso não é ausência de efeito, é ausência de teste. Para essas duas federações a única rota é o agregado por método (n=20), que passa.
 
-## 8. As 4 seeds bastam?
+## 9. As 4 seeds bastam?
 
 **Para claim agregado, sim — e as 3 deles também bastavam, pelo mesmo motivo.** O `n` do teste nunca foi o número de seeds. As seeds servem para *estabilizar cada célula* antes de parear; o poder vem das 24 ou 30 configurações. Rodei também a versão com cada seed como observação (n = 96 e 120) e ela não muda nenhum veredito — só encolhe os `p`, o que é ilusório: 4 seeds da mesma configuração não são 4 observações independentes. Por isso a versão com seeds mediadas é a primária.
 
 **Para claim célula-a-célula, não — e nem 8 seeds resolveriam a um custo razoável.** Continua valendo o §12: dp(Δ) ≈ 2,5 pp com n=4 dá IC95 de ±4 pp, e o efeito mediano é 3 pp. Mas o Wilcoxon torna essa limitação muito menos importante do que parecia, porque quase todo claim que queremos fazer é agregado.
 
-### Duas ressalvas honestas
+### Uma ressalva de leitura
 
-As configurações pareadas **não são independentes** — o mesmo dataset aparece em 4 regimes, o mesmo encoder em 6 datasets. O Wilcoxon assume independência e o Bonferroni não conserta dependência. Os `p` ordenam evidência com segurança; tratá-los como probabilidades exatas seria exagero. O benchmark tem exatamente o mesmo problema, então não estamos abaixo do padrão da área — mas convém dizer na seção de método em vez de deixar o revisor achar.
+"n.s." significa **não distinguível**, nunca "não ajuda". LFR+resnetse5 com +0,27 pp centralizado é honestamente um empate; TF-C+tstcc com +1,77 pp e 15/24 é um efeito plausível que o nosso `n` não resolve.
 
-Segunda: "n.s." significa **não distinguível**, nunca "não ajuda". LFR+resnetse5 com +0,27 pp centralizado é honestamente um empate; TF-C+tstcc com +1,77 pp e 15/24 é um efeito plausível que o nosso `n` não resolve.
+A ressalva pesada — a de independência — virou a seção 10, porque foi medida.
+
+## 10. O teste vale para variáveis dependentes? E as nossas são independentes?
+
+São **duas perguntas diferentes**, e a confusão entre elas é o erro comum. O Wilcoxon
+pareado tem dois pressupostos que puxam em direções opostas:
+
+| | dependência **dentro** do par | independência **entre** os pares |
+|---|---|---|
+| o que o teste faz | **exige** | **assume** |
+| no nosso caso | ✅ é o desenho | ❌ **violado** — medido abaixo |
+
+**Dentro do par: dependência é obrigatória, não é problema.** É para isso que o teste
+existe. As duas medidas de um par (SSL e supervisionado na *mesma* configuração)
+são deliberadamente dependentes — mesmo dataset, mesmo regime, mesmo encoder, mesmo
+split. É essa dependência que faz a variação irrelevante cancelar na subtração e é
+por isso que o pareado tem muito mais poder que o não-pareado (Mann-Whitney) com o
+mesmo `n`. **Quem tem amostras dependentes desse tipo *deve* usar Wilcoxon pareado, e
+não a versão não-pareada.**
+
+**Entre os pares: aí sim há um pressuposto, e ele é violado.** O teste trata os `n`
+valores de Δ como uma amostra i.i.d. — só assim "cada Δ tem 50% de chance de cair
+para cada lado" vale, que é a hipótese nula da qual sai o `p`. As nossas 24 (ou 30)
+configurações são um **cruzado `domínio × regime`**: o mesmo domínio reaparece nos 4
+(ou 5) regimes, e o mesmo regime reaparece nos 6 domínios. Δs que compartilham um
+domínio herdam junto o efeito daquele domínio.
+
+### Quanto isso pesa — as três medidas (bloco F do script)
+
+**1. ICC e `n` efetivo.** A fração da variância do Δ que é *do cluster* (ICC), e o
+`n` que sobra depois de descontá-la: `n_eff = n / (1 + (m−1)·ICC)`.
+
+| eixo de agrupamento | ICC observado | `n_eff` (de 24 ou 30) |
+|---|---|---|
+| centralizado, por **domínio** | 0,02 – 0,37 | 11 – 22 |
+| centralizado, por **regime** | 0,05 – **0,85** | **4,6** – 19 |
+| federado, por **domínio/alvo** | 0,09 – 0,58 | 9 – 22 |
+| federado, por **regime** | 0,08 – 0,61 | 7,4 – 21 |
+
+O caso extremo é **TF-C + ResNet-SE no centralizado**: 85% da variância do Δ é do
+regime (é o par que faz −16,6 pp no 1-shot e +4,6 no de 100), e o `n = 24` vale por
+**4,6** configurações independentes. O `p` nominal desse par é otimista por uma
+margem grande — felizmente ele é n.s. de qualquer jeito.
+
+**2. Bootstrap por cluster — o teste de robustez que importa.** Reamostrei **domínios
+inteiros** (e, separadamente, **regimes inteiros**) com reposição, 4.000 vezes, e
+refiz a mediana do Δ. O IC95 daí respeita a dependência. O resultado:
+
+> **7 dos 8 vereditos sobrevivem aos dois agrupamentos.** Todos os três vencedores
+> centralizados (TF-C+RNN, TF-C+CNN-PFF, LFR+RNN) mantêm IC95 longe do zero nos dois
+> eixos; todos os `n.s.` continuam cruzando o zero.
+>
+> **A exceção é LFR + RNN no federado** (+2,92 pp, `p_bonf = 0,0021`): agrupando por
+> domínio o IC95 é [+1,7, +5,7], mas agrupando por **regime** é **[−0,3, +5,9] — cruza
+> o zero**. Esse veredito depende do pressuposto de independência; os outros quatro
+> vencedores federados (TF-C+RNN, TF-C+CNN-PFF, LFR+TSTCC, LFR+ResNet-SE) não.
+
+Em texto de artigo, **rebaixe o LFR+RNN federado para "efeito plausível"** ou reporte
+o IC clusterizado ao lado do `p`. É o único ajuste que o diagnóstico obriga.
+
+**3. A família de Bonferroni também não é independente.** Os 8 testes usam o **mesmo
+braço supervisionado** como referência, então seus Δ são correlacionados: ρ de
+Spearman médio de apenas **+0,06** (centralizado) e **+0,05** (federado) entre todos
+os pares de testes, mas chegando a **+0,61** entre LFR e TF-C sobre o mesmo encoder.
+Correlação positiva torna Bonferroni **conservador** (o α real fica abaixo de 0,05) —
+erra para o lado seguro, e por isso não muda nenhum veredito.
+
+### O que dizer, então
+
+1. **O teste é o certo para o desenho.** Dependência dentro do par é o motivo de usar
+   o pareado; não é uma violação.
+2. **A independência entre pares é violada, e sabemos por quanto:** `n_eff` de 4,6 a
+   22 em vez de 24/30, conforme o par e o eixo.
+3. **Os `p` ordenam evidência com segurança; não são probabilidades exatas.** Com
+   `n_eff` menor que `n`, os `p` nominais são otimistas — o que sobra intacto é a
+   ordem dos pares e o placar `Δ>0`, que não dependem do pressuposto.
+4. **A conclusão empírica não muda**, exceto pelo LFR+RNN federado.
+5. **O benchmark tem exatamente o mesmo problema** e não o mede — então não estamos
+   abaixo do padrão da área; estamos acima, por ter medido. Dizer isso na seção de
+   método é mais barato que deixar um revisor encontrar.
+
+**A rota cara, se um dia for exigida:** um modelo misto (LMM) com efeitos aleatórios
+cruzados de domínio e regime, ou um teste de sinal em nível de cluster. Este último
+eu rodei e **não serve aqui**: com 6 clusters o piso de `p` é 0,031, que depois do
+Bonferroni ×8 vira 0,25 — **nenhum resultado pode ser significante em nível de
+cluster, nem em princípio** (é o argumento do piso de poder do §8, aplicado ao próprio
+diagnóstico). Por isso o artefato defensável é o **IC bootstrap**, não um `p`
+clusterizado.
