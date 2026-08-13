@@ -16,6 +16,7 @@ substituiu — nada foi apagado.
 | [`estado_da_arte.md`](estado_da_arte.md) | **posicionamento**: estado da arte de F-SSL, verificação de ineditismo, forças/fraquezas da contribuição, lista de leitura. |
 | [`metodo_e_auditoria.md`](metodo_e_auditoria.md) | material da **seção de método**: hiperparâmetros vs benchmark, desvios deliberados, achados da auditoria de código. |
 | [`wilcoxon_pares.md`](wilcoxon_pares.md) | **o que dá para afirmar com 4 seeds**: o que é o Wilcoxon pareado, quais testes o benchmark de fato faz (e qual ele não faz), a conferência da réplica par a par, e quais pares SSL×encoder vencem o supervisionado no centralizado, no federado e nas federações mistas. |
+| [`perguntas_de_pesquisa.md`](perguntas_de_pesquisa.md) | **as RQs e de onde elas vêm**: o objetivo no template de Wohlin, as duas RQs em PICOC com hipóteses, o portão FINER, e o material para estudar esses frameworks. Comece por aqui antes de propor experimento novo — o desenho vem *depois* da pergunta. |
 | [`papers/README.md`](papers/README.md) | quais PDFs estão baixados nesta máquina (os PDFs não são versionados). |
 
 **Registros de sessão** (`sessao_<AAAA-MM-DD>_<assunto>.md`) não são docs vivos:

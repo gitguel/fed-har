@@ -19,9 +19,14 @@ só o registro do que foi de fato baixado e lido.
 Os três foram lidos para a conferência de ineditismo do piso de batch: **nenhum
 antecipa o achado** (`../estado_da_arte.md §3.4`).
 
-⚠️ **Os três arquivos acima não estão mais no disco** (verificado 2026-07-28) —
-a tabela ficou desatualizada. O que existe hoje são 23 PDFs; use
-`find docs/papers -name '*.pdf'` em vez desta tabela.
+⚠️ **A tabela acima está desatualizada** (verificado 2026-07-28): `B5` e `C8` não
+estão mais no disco. Use `find docs/papers -name '*.pdf'` em vez desta tabela.
+
+**`B1_daLuz_benchmark.pdf` foi rebaixado em 2026-08-13** e está de volta em
+`B_SSL/` — são hoje 24 PDFs. Ele voltou porque as **perguntas de pesquisa** do
+benchmark (§I, RQ1–RQ6) não estavam registradas em lugar nenhum do repo e não são
+recuperáveis da web (o IEEE bloqueia scraping; o GitHub do H-IAAC só publica o
+abstract). Estão transcritas em [`../perguntas_de_pesquisa.md §1`](../perguntas_de_pesquisa.md).
 
 ## Baixados em 2026-07-28 (protocolo de avaliação com poucos rótulos)
 
