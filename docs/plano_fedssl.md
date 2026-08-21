@@ -3,13 +3,18 @@
 *Consolidado em 2026-07-27 a partir de `desenho_cross_device.md` (2026-07-24),
 `_arquivo/limite_batch_cliente_fssl.md` (2026-07-24) e da parte viva de
 `_arquivo/plano_fedssl_simulado.md` (2026-07-13/14); §2.1–2.3 e §4.3 vêm da
-sabatina de 2026-07-27/28. É o documento que dita o próximo passo de
-implementação.*
+sabatina de 2026-07-27/28.*
 
 **Contexto do pivô (2026-07-21, com o orientador):** a federação **cross-silo**
 (1 dataset por cliente, cenários 1–8) foi abandonada como desenho e como
 controle. Os 6,3 pp medidos lá viram **motivação**, não contribuição
 (`resultados.md §4`). O eixo ativo é **cross-device: clientes = usuários**.
+
+> **Nota — virada das RQs (2026-08-19).** Este documento é anterior ao
+> fechamento das três RQs em [`perguntas_de_pesquisa.md`](perguntas_de_pesquisa.md).
+> Vale como **registro do que foi desenhado e medido até aqui**, não como o
+> desenho atual: o mapeamento RQ → braço → comparador está sendo redefinido e vai
+> morar num documento próprio de desenho experimental.
 
 **Onde vive o quê:** fatos dos datasets em [`dados_daghar.md`](dados_daghar.md);
 resultados centralizados em [`resultados.md`](resultados.md); posicionamento na
@@ -487,9 +492,9 @@ Regra de sempre: **medir o 1º job de cada onda antes de extrapolar custo**; tmu
    e R=100 com corte pela curva. Nenhum braço inclui KuHar, então o piso de batch
    não bloqueia.
 5. **Controle que falta** do §2: o braço de label skew artificial pareado em volume.
-4. **Depois**: endereçar o piso de batch (KuHar é o caso que o expõe) — **forma em
+6. **Depois**: endereçar o piso de batch (KuHar é o caso que o expõe) — **forma em
    aberto** (§3.3).
-5. **Segunda onda** (heterogeneidade por pessoa como eixo próprio): WISDM
+7. **Segunda onda** (heterogeneidade por pessoa como eixo próprio): WISDM
    (36 clientes, label skew 0.000 — feature skew puro) e KuHar (label skew 0.539)
    como os dois extremos. O gap cintura↔perna prevê que cross-domain **entre
    grupos de posição** é o teste mais duro de mitigação.
@@ -505,7 +510,8 @@ Regra de sempre: **medir o 1º job de cada onda antes de extrapolar custo**; tmu
   (`BATCH_SIZE=64`).
 - Partições: `scripts/federated/partitions.py` (`_user_shards`,
   `make_ssl_client_datasets`), `scripts/federated/partition_users.py`.
-- A lousa do orientador que originou o desenho: `lousa_orientador_fedssl.png`.
+- A lousa do orientador que originou o desenho: transcrita em
+  `_arquivo/plano_fedssl_simulado.md` (a foto foi removida do repo em 2026-08-21).
 
 ### Referências de método
 

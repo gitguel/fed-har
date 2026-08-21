@@ -1,30 +1,31 @@
 # `docs/` — índice
 
-Compactado em **2026-07-27**: 13 documentos viraram 6; o mapa de experimentos entrou
-em 2026-08-05 e o Wilcoxon por par em 2026-08-06, somando 8. O que foi superado está em
-[`_arquivo/`](_arquivo/) com um cabeçalho dizendo por que morreu e quem o
-substituiu — nada foi apagado.
+Compactado em **2026-07-27**: 13 documentos viraram 6, e desde então alguns
+entraram. Não contamos documentos à mão — a tabela abaixo **é** o índice. O que
+foi superado está em [`_arquivo/`](_arquivo/) com um cabeçalho dizendo por que
+morreu e quem o substituiu — nada foi apagado.
 
 ## O que ler pra quê
 
 | Documento | Use quando precisar de… |
 |---|---|
+| [`perguntas_de_pesquisa.md`](perguntas_de_pesquisa.md) | **as RQs**: o objetivo no template de Wohlin e as três RQs em PICOC com hipóteses. Só isso — é curto de propósito. Comece por aqui antes de propor experimento novo: o desenho vem *depois* da pergunta. |
+| [`perguntas_de_pesquisa_apoio.md`](perguntas_de_pesquisa_apoio.md) | o que **sustenta** as RQs, separado para o doc principal ficar legível: as 6 RQs do benchmark transcritas, o portão FINER, as **restrições de medição** (inclui a armadilha do `n_shots` por cliente — leia antes de desenhar experimento), os itens em aberto e a bibliografia dos frameworks. |
 | [`dados_daghar.md`](dados_daghar.md) | **fatos** dos datasets: posição do sensor, classes por dataset, usuários, janelas por usuário, skews. É a fonte única — os outros docs citam este. |
 | [`mapa_experimentos.md`](mapa_experimentos.md) | **o que foi rodado**: as 4 federações e as 6 células de avaliação, as duas fases (pré-treino/fine-tuning), contagem total de runs e avaliações, e todo hiperparâmetro com o motivo da escolha. Comece por aqui quando se perder entre os braços. |
 | [`resultados.md`](resultados.md) | o que já foi **medido**: transfer centralizado, `comb2target`, o skyline SL-`combined`, e o preliminar federado cross-silo. |
-| [`plano_fedssl.md`](plano_fedssl.md) | o **próximo passo**: desenho fatorial cross-device, o piso de batch, a implementação e a ordem de execução. |
+| [`plano_fedssl.md`](plano_fedssl.md) | o **desenho do eixo federado**, escrito antes das RQs: desenho fatorial cross-device, o piso de batch, a implementação e a ordem de execução. Continua valendo para o piso de batch e a implementação; o mapeamento para as RQs é o que está em aberto. |
 | [`estado_da_arte.md`](estado_da_arte.md) | **posicionamento**: estado da arte de F-SSL, verificação de ineditismo, forças/fraquezas da contribuição, lista de leitura. |
 | [`metodo_e_auditoria.md`](metodo_e_auditoria.md) | material da **seção de método**: hiperparâmetros vs benchmark, desvios deliberados, achados da auditoria de código. |
 | [`wilcoxon_pares.md`](wilcoxon_pares.md) | **o que dá para afirmar com 4 seeds**: o que é o Wilcoxon pareado, quais testes o benchmark de fato faz (e qual ele não faz), a conferência da réplica par a par, e quais pares SSL×encoder vencem o supervisionado no centralizado, no federado e nas federações mistas. |
-| [`perguntas_de_pesquisa.md`](perguntas_de_pesquisa.md) | **as RQs**: o objetivo no template de Wohlin e as três RQs em PICOC com hipóteses. Só isso — é curto de propósito. Comece por aqui antes de propor experimento novo: o desenho vem *depois* da pergunta. |
-| [`perguntas_de_pesquisa_apoio.md`](perguntas_de_pesquisa_apoio.md) | o que **sustenta** as RQs, separado para o doc principal ficar legível: as 6 RQs do benchmark transcritas, o portão FINER, as **restrições de medição** (inclui a armadilha do `n_shots` por cliente — leia antes de desenhar experimento), os itens em aberto e a bibliografia dos frameworks. |
 | [`papers/README.md`](papers/README.md) | quais PDFs estão baixados nesta máquina (os PDFs não são versionados). |
 
 **Registros de sessão** (`sessao_<AAAA-MM-DD>_<assunto>.md`) não são docs vivos:
 valem para os commits que citam e envelhecem. O mais recente é
 [`sessao_2026-07-28_grade_cross_device.md`](sessao_2026-07-28_grade_cross_device.md)
-— fecha o baseline FedAvg cross-device. Para retomar o trabalho, comece por
-[`prompt_proxima_sessao.md`](prompt_proxima_sessao.md).
+— fecha o baseline FedAvg cross-device. Para retomar o trabalho, comece pelas
+[perguntas de pesquisa](perguntas_de_pesquisa.md) e rode
+`poetry run python scripts/analysis/cache_status.py`.
 
 **Apresentações** ficam todas em [`apresentacoes/`](apresentacoes/) — uma
 apresentação é um PDF mais um `.md` de mesmo nome descrevendo o deck; ver o

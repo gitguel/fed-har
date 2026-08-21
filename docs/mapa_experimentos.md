@@ -8,6 +8,12 @@ linha de origem indicada.
 **O que ele não é:** não traz resultados (isso é `resultados.md` e os notebooks),
 nem justificativa de desenho experimental (isso é `plano_fedssl.md`).
 
+> **Nota — virada das RQs (2026-08-19).** Este documento é anterior ao
+> fechamento das três RQs em [`perguntas_de_pesquisa.md`](perguntas_de_pesquisa.md).
+> Vale como **registro do que foi desenhado e medido até aqui**, não como o
+> desenho atual: o mapeamento RQ → braço → comparador está sendo redefinido e vai
+> morar num documento próprio de desenho experimental.
+
 ---
 
 ## 1. O vocabulário — três palavras que confundem

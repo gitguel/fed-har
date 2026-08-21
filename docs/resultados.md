@@ -10,6 +10,12 @@ skews) estão em [`dados_daghar.md`](dados_daghar.md); o desenho do eixo federad
 cross-device, em [`plano_fedssl.md`](plano_fedssl.md); hiperparâmetros e desvios
 em relação ao benchmark, em [`metodo_e_auditoria.md`](metodo_e_auditoria.md).
 
+> **Nota — virada das RQs (2026-08-19).** Este documento é anterior ao
+> fechamento das três RQs em [`perguntas_de_pesquisa.md`](perguntas_de_pesquisa.md).
+> Vale como **registro do que foi desenhado e medido até aqui**, não como o
+> desenho atual: o mapeamento RQ → braço → comparador está sendo redefinido e vai
+> morar num documento próprio de desenho experimental.
+
 ---
 
 ## 1. O transfer centralizado segue a posição do sensor
@@ -209,13 +215,14 @@ incluído a grade fechou em 128 runs e o gap é **6,3 pp**. Ao citar, dizer a ba
   `source=="combined"`. Grupos de posição conforme `dados_daghar.md §2`.
 - **Base de encoders:** todas as seções agregam os **4 encoders** (desde
   2026-07-27, quando o `tstcc` do skyline foi medido).
-  `scripts/analysis/build_presentation_assets.py` calcula a interseção por método
-  do próprio dado (`enc_base`) e a imprime na legenda de cada asset — por isso as
-  tabelas da apresentação não podem mais divergir desta seção.
+  Qualquer agregação que misture métodos tem de usar a **interseção** de
+  encoders entre eles, nunca a união: o skyline SL-`combined` já teve 3 encoders
+  contra os 4 dos braços SSL, e comparar colunas de bases diferentes produz um Δ
+  que não é pareado. Declarar a base na legenda de toda figura/tabela.
 - **Δ pareado por seed** (§3): o Δ é calculado seed a seed e só então promediado;
   o dp reportado é o dessa distribuição. Diferença de médias marginais esconderia
   a variância que decide se +0.011 é efeito ou ruído.
-- Assets da apresentação: `poetry run python scripts/analysis/build_presentation_assets.py
-  --outdir docs/apresentacoes/<nome>`. Apresentação já entregue é registro
-  imutável e **não** é regerada.
+- Assets de apresentação: não há mais gerador no repo (removido em 2026-08-21).
+  Apresentação já entregue é registro imutável e **não** é regerada; figura nova
+  sai dos caches acima, pelos notebooks.
 - Referências bibliográficas dos datasets: `dados_daghar.md §5`.
