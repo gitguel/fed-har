@@ -16,7 +16,7 @@ substituiu — nada foi apagado.
 | [`estado_da_arte.md`](estado_da_arte.md) | **posicionamento**: estado da arte de F-SSL, verificação de ineditismo, forças/fraquezas da contribuição, lista de leitura. |
 | [`metodo_e_auditoria.md`](metodo_e_auditoria.md) | material da **seção de método**: hiperparâmetros vs benchmark, desvios deliberados, achados da auditoria de código. |
 | [`wilcoxon_pares.md`](wilcoxon_pares.md) | **o que dá para afirmar com 4 seeds**: o que é o Wilcoxon pareado, quais testes o benchmark de fato faz (e qual ele não faz), a conferência da réplica par a par, e quais pares SSL×encoder vencem o supervisionado no centralizado, no federado e nas federações mistas. |
-| [`perguntas_de_pesquisa.md`](perguntas_de_pesquisa.md) | **as RQs**: o objetivo no template de Wohlin e as duas RQs em PICOC com hipóteses. Só isso — é curto de propósito. Comece por aqui antes de propor experimento novo: o desenho vem *depois* da pergunta. |
+| [`perguntas_de_pesquisa.md`](perguntas_de_pesquisa.md) | **as RQs**: o objetivo no template de Wohlin e as três RQs em PICOC com hipóteses. Só isso — é curto de propósito. Comece por aqui antes de propor experimento novo: o desenho vem *depois* da pergunta. |
 | [`perguntas_de_pesquisa_apoio.md`](perguntas_de_pesquisa_apoio.md) | o que **sustenta** as RQs, separado para o doc principal ficar legível: as 6 RQs do benchmark transcritas, o portão FINER, as **restrições de medição** (inclui a armadilha do `n_shots` por cliente — leia antes de desenhar experimento), os itens em aberto e a bibliografia dos frameworks. |
 | [`papers/README.md`](papers/README.md) | quais PDFs estão baixados nesta máquina (os PDFs não são versionados). |
 
