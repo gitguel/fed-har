@@ -65,6 +65,12 @@ Funil: **tema geral → motivação → termos → desafios do meu recorte → R
 Abaixo, o diagrama: clientes (usuários) → pré-treino SSL federado → fine-tuning →
 modelo. Marcar que **o dado bruto nunca sai do cliente**.
 
+Asset pronto: `docs/pitch_assets/fig_pitch_slide1_fedssl.{png,pdf}` (o PDF é
+vetorial, melhor para projetar). Regerar com
+`poetry run python scripts/analysis/build_pitch_diagram.py --outdir docs/pitch_assets`
+— quando a data da apresentação fixar, o asset migra junto com este roteiro para
+`docs/apresentacao_<DD_MM>/`.
+
 **Falar:** nomear FL, SSL, HAR e domínio já aqui — quem só prestar atenção a um
 slide, presta a este.
 

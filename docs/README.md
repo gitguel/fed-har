@@ -34,6 +34,12 @@ dentro dela. Assets novos nascem numa pasta nova:
 poetry run python scripts/analysis/build_presentation_assets.py --outdir docs/apresentacao_<DD_MM>
 ```
 
+O **pitch das reuniões semanais** ainda não tem data marcada, então o roteiro mora
+solto em [`pitch_reuniao_semanal.md`](pitch_reuniao_semanal.md), com os assets em
+`pitch_assets/` (gerados por `scripts/analysis/build_pitch_diagram.py` e
+`build_har_diagram.py`). Quando a data fixar, roteiro e assets migram para
+`apresentacao_<DD_MM>/`.
+
 ## O que já rodou
 
 Não mantemos essa contagem à mão — a versão manual já esteve errada em 6 pontos
