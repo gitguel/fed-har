@@ -120,10 +120,11 @@ documentos vivos são `dados_daghar.md` (fatos dos datasets, fonte única),
 superado está em `docs/_arquivo/` com cabeçalho de arquivamento — **não use
 documento de `_arquivo/` como fonte**, os números lá estão datados.
 
-**Apresentações**: uma pasta por apresentação, `docs/apresentacao_<DD_MM>/`. A
-pasta de uma apresentação já entregue é **registro imutável** — nunca regerar
-dentro dela. Assets novos nascem numa pasta nova:
-`poetry run python scripts/analysis/build_presentation_assets.py --outdir docs/apresentacao_<DD_MM>`
+**Apresentações**: todas em `docs/apresentacoes/` — um PDF mais um `.md` de
+mesmo nome descrevendo o deck (ver `docs/apresentacoes/README.md`). Apresentação
+já entregue é **registro imutável** — nunca regerar nem editar; versão nova é
+arquivo novo. Assets, quando houver, vão numa subpasta de mesmo nome:
+`poetry run python scripts/analysis/build_presentation_assets.py --outdir docs/apresentacoes/<nome>`
 (o `--outdir` é obrigatório justamente para não sobrescrever registro).
 
 ## Architecture

@@ -26,19 +26,12 @@ valem para os commits que citam e envelhecem. O mais recente é
 — fecha o baseline FedAvg cross-device. Para retomar o trabalho, comece por
 [`prompt_proxima_sessao.md`](prompt_proxima_sessao.md).
 
-Apresentações ficam em `apresentacao_<DD_MM>/`, uma pasta por apresentação. **A
-pasta de uma apresentação já entregue é registro imutável** — nunca regerar
-dentro dela. Assets novos nascem numa pasta nova:
-
-```bash
-poetry run python scripts/analysis/build_presentation_assets.py --outdir docs/apresentacao_<DD_MM>
-```
-
-O **pitch das reuniões semanais** ainda não tem data marcada, então o roteiro mora
-solto em [`pitch_reuniao_semanal.md`](pitch_reuniao_semanal.md), com os assets em
-`pitch_assets/` (gerados por `scripts/analysis/build_pitch_diagram.py` e
-`build_har_diagram.py`). Quando a data fixar, roteiro e assets migram para
-`apresentacao_<DD_MM>/`.
+**Apresentações** ficam todas em [`apresentacoes/`](apresentacoes/) — uma
+apresentação é um PDF mais um `.md` de mesmo nome descrevendo o deck; ver o
+[README de lá](apresentacoes/README.md). Deck entregue é registro imutável: não se
+regera nem se edita, versão nova é arquivo novo. As apresentações de 21/07, 27/07
+e 11/08 foram excluídas em 2026-08-21 (cobriam a grade anterior às RQs de 19/08);
+seguem no histórico do git.
 
 ## O que já rodou
 

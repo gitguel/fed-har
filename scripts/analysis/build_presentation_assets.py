@@ -1,8 +1,8 @@
 """Gera os assets da apresentação (slides SSL LFR/TF-C + comparação SSL vs SL).
 
 Lê apenas os caches de results/ e escreve no diretório passado em `--outdir`
-(obrigatório, sem default: cada apresentação tem a sua pasta datada, e as
-pastas de apresentações já entregues nunca são regeradas):
+(obrigatório, sem default: cada apresentação tem a sua pasta em
+`docs/apresentacoes/`, e apresentação já entregue nunca é regerada):
   - resultados_ssl.xlsx (abas: resumo_metodos, regimes_finetune, regimes_linear,
     encoder_x_tecnica, cross_encoder, comb2target) — "média ± dp entre seeds" (2 casas)
   - tabelas/tab_resumo_metodos.{tex,pdf}, tabelas/tab_comb2target.{tex,pdf},
@@ -24,7 +24,7 @@ uma coluna de 3 encoders com outra de 4 produz um Δ que não é pareado. A base
 calculada do dado, então quando um cache é completado o número muda sozinho.
 
 Rodar: poetry run python scripts/analysis/build_presentation_assets.py \\
-           --outdir docs/apresentacao_<DD_MM>
+           --outdir docs/apresentacoes/<nome>
 (a compilação dos PDFs usa `tectonic` ou `pdflatex` se disponíveis no PATH)
 """
 
@@ -884,7 +884,7 @@ def fig_transfer_delta(df, protocol="finetune", n_shots="full"):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--outdir", required=True,
-                    help="Pasta de saída, ex.: docs/apresentacao_27_07. Sem default "
+                    help="Pasta de saída, ex.: docs/apresentacoes/<nome>. Sem default "
                          "de propósito: pastas de apresentações já entregues são "
                          "registro imutável e não devem ser regeradas.")
     args = ap.parse_args()

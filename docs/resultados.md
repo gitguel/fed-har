@@ -216,6 +216,6 @@ incluído a grade fechou em 128 runs e o gap é **6,3 pp**. Ao citar, dizer a ba
   o dp reportado é o dessa distribuição. Diferença de médias marginais esconderia
   a variância que decide se +0.011 é efeito ou ruído.
 - Assets da apresentação: `poetry run python scripts/analysis/build_presentation_assets.py
-  --outdir docs/apresentacao_<DD_MM>`. Pastas de apresentações já entregues são
-  registro imutável e **não** são regeradas.
+  --outdir docs/apresentacoes/<nome>`. Apresentação já entregue é registro
+  imutável e **não** é regerada.
 - Referências bibliográficas dos datasets: `dados_daghar.md §5`.
