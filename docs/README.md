@@ -11,6 +11,7 @@ morreu e quem o substituiu — nada foi apagado.
 |---|---|
 | [`perguntas_de_pesquisa.md`](perguntas_de_pesquisa.md) | **as RQs**: o objetivo no template de Wohlin e as três RQs em PICOC com hipóteses. Só isso — é curto de propósito. Comece por aqui antes de propor experimento novo: o desenho vem *depois* da pergunta. |
 | [`perguntas_de_pesquisa_apoio.md`](perguntas_de_pesquisa_apoio.md) | o que **sustenta** as RQs, separado para o doc principal ficar legível: as 6 RQs do benchmark transcritas, o portão FINER, as **restrições de medição** (inclui a armadilha do `n_shots` por cliente — leia antes de desenhar experimento), os itens em aberto e a bibliografia dos frameworks. |
+| [`desenho_experimental.md`](desenho_experimental.md) | **como as RQ1/RQ2 serão medidas**: as 5 federações, os regimes pareados `k × n_clientes`, o batch, as grades, o protocolo, o confundidor de orçamento de otimização e as decisões D1–D8. Leia depois das RQs e antes de rodar qualquer coisa. |
 | [`dados_daghar.md`](dados_daghar.md) | **fatos** dos datasets: posição do sensor, classes por dataset, usuários, janelas por usuário, skews. É a fonte única — os outros docs citam este. |
 | [`mapa_experimentos.md`](mapa_experimentos.md) | **o que foi rodado**: as 4 federações e as 6 células de avaliação, as duas fases (pré-treino/fine-tuning), contagem total de runs e avaliações, e todo hiperparâmetro com o motivo da escolha. Comece por aqui quando se perder entre os braços. |
 | [`resultados.md`](resultados.md) | o que já foi **medido**: transfer centralizado, `comb2target`, o skyline SL-`combined`, e o preliminar federado cross-silo. |
@@ -56,10 +57,15 @@ Retrato de **2026-07-27** (todas as grades completas, zero NaN):
 
 Caches legados sem leitor foram para `results/_arquivo/` (ver o README de lá).
 
+**Desde 2026-08-23** o que vai ser reportado nas RQs fica em `results/rqs/`, produzido pelos
+drivers de `scripts/rqs/`; o resto é anterior às RQs e não entra nas tabelas — ver
+[`results/README.md`](../results/README.md).
+
 ## Estado do projeto em uma linha
 
-O eixo centralizado está fechado e medido; o eixo federado **cross-silo** foi
-rebaixado a motivação (2026-07-21) e o eixo ativo é **cross-device (clientes =
-usuários)**, cujo pré-treino federado (`scripts/ssl/pretrain_fed.py`) já está
-implementado — falta a partição multi-dataset por usuário e os experimentos de
-controle (`plano_fedssl.md §5`).
+O eixo centralizado está fechado e medido; o cross-silo foi rebaixado a motivação
+(2026-07-21); e desde **2026-08-23** existe desenho fechado para as RQ1/RQ2
+([`desenho_experimental.md`](desenho_experimental.md)): 5 federações cross-device
+(KuHar fora), partição natural, regimes pareados `k × n_clientes`. A grade nova
+roda pelos drivers de `scripts/rqs/` e escreve em `results/rqs/`. A RQ3 não tem
+desenho — sai do DAGHAR, candidato ExtraSensory.

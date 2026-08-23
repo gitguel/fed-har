@@ -48,6 +48,7 @@ from __future__ import annotations
 import argparse
 import copy
 import csv
+import os
 import sys
 import time
 from pathlib import Path
@@ -68,7 +69,9 @@ from federated.cross_device import DEFAULT_BUDGET, make_clients  # noqa: E402
 from pretrain_lfr import build_lfr  # noqa: E402
 from pretrain_tfc import build_tfc  # noqa: E402
 
-FED_CKPT_ROOT = PROJECT_ROOT / "checkpoints" / "ssl_fed"
+# Sobrescrevível por env: a grade das RQs escreve em checkpoints/rqs/ssl_fed/
+# para não colidir com os backbones da grade B=192 já rodada no cluster.
+FED_CKPT_ROOT = Path(os.environ.get("FEDHAR_FEDSSL_CKPT_ROOT", PROJECT_ROOT / "checkpoints" / "ssl_fed"))
 METHODS = ["lfr", "tfc"]
 MILESTONES = {1, 5, 10, 25, 50, 100}
 DPP_SELECTION_SIZE = 128  # amostras da união usadas na seleção (LFR, servidor)

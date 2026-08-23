@@ -197,28 +197,44 @@ def initial_state(encoder: str, method: str, init_ckpt: Path | None) -> dict:
 def apply_shots(clients: list, n_shots, seed: int) -> list:
     """Recorta `n_shots` rótulos por classe DENTRO do shard de cada cliente.
 
-    A ladder mora dentro do orçamento de 192 janelas (e não nos dados completos do
-    usuário) por três razões, decididas na sabatina de 2026-07-29: o degrau `full`
-    coincide **exatamente** com o baseline já medido; os pesos do FedAvg seguem
-    uniformes (todo cliente com `6·L`); e são as mesmas janelas que o pré-treino
-    SSL viu sem rótulo.
+    `n_shots` é **por classe e por cliente** — o pareamento com o centralizado é
+    `n_shots × n_clientes` (docs/desenho_experimental.md §3). Com `--budget 192` a
+    ladder mora dentro do orçamento; com `--budget 0` (partição natural, o padrão
+    das RQ1/RQ2) ela mora nos dados completos do usuário.
+
+    Duas invariantes são checadas, porque quebrá-las desencaixa os degraus da
+    ladder em silêncio:
+
+    1. o recorte preserva **todas as classes que aquele cliente tem** — se sumir
+       uma, `few_shot_indices` passa a percorrer um `np.unique` diferente e o
+       consumo do RNG desloca entre degraus;
+    2. **todos os clientes veem o mesmo conjunto de classes** — senão os shards
+       deixam de ser comparáveis entre si e o peso do FedAvg mistura cobertura
+       com volume.
+
+    Ambas são dataset-agnósticas de propósito: UCI tem 5 classes e WISDM tem 4
+    (`dados_daghar.md §1`), então comparar com `NUM_CLASSES` seria errado.
     """
     if n_shots == FULL_SHOTS:
         return clients
-    out = []
+    out, cobertura = [], []
     for cid, shard in clients:
+        todas = {int(shard[i][1]) for i in range(len(shard))}
         idx = few_shot_indices(shard, n_shots, seed)
-        # O aninhamento por seed (L=1 ⊂ L=2 ⊂ L=5, como no benchmark) só vale se
-        # todas as classes estiverem presentes: `few_shot_indices` percorre
-        # `np.unique(labels)`, e uma classe ausente desloca o consumo do RNG e
-        # desencaixa os degraus. Vale nos 4 specs da grade (medido: 6/6 classes em
-        # todos os 20 clientes de RW/MS); um spec com KuHar quebraria aqui.
-        present = len({int(shard[i][1]) for i in idx})
-        if present != NUM_CLASSES:
+        present = {int(shard[i][1]) for i in idx}
+        if present != todas:
             raise ValueError(
-                f"cliente {cid}: só {present} das {NUM_CLASSES} classes no shard — "
-                f"a ladder deixa de ser aninhada entre degraus.")
+                f"cliente {cid}: o recorte de {n_shots} shots perdeu as classes "
+                f"{sorted(todas - present)} — a ladder deixa de ser aninhada.")
+        cobertura.append((cid, todas))
         out.append((cid, Subset(shard, idx)))
+    ref_cid, ref = cobertura[0]
+    for cid, classes in cobertura[1:]:
+        if classes != ref:
+            raise ValueError(
+                f"clientes com conjuntos de classes diferentes: {ref_cid} tem "
+                f"{sorted(ref)} e {cid} tem {sorted(classes)} — o pareamento "
+                f"`n_shots × n_clientes` deixa de valer (ver desenho_experimental.md §3).")
     return out
 
 
@@ -236,14 +252,15 @@ def run(spec: str, encoder: str, rounds: int, local_epochs: int, seed: int,
         budget: int | None, targets: list[str], num_workers: int = 0,
         ckpt_dir: Path | None = None, method: str = "none",
         init_ckpt: Path | None = None, n_shots=FULL_SHOTS,
-        pretrain_rounds: int = 0, pretrain_spec: str = "") -> pd.DataFrame:
+        pretrain_rounds: int = 0, pretrain_spec: str = "",
+        lr: float | None = None) -> pd.DataFrame:
     # `pretrain_spec` == "" significa "o backbone veio do MESMO spec do finetuning"
     # (ou não há backbone). Só é preenchido quando as duas populações diferem —
     # é o que distingue as células que separam pré-treino de fine-tuning.
     seed_everything(seed, workers=True)
     clients = apply_shots(make_clients(spec, seed, budget=budget), n_shots, seed)
     weights = [len(shard) for _, shard in clients]
-    lr = BEST_LR[encoder]
+    lr = BEST_LR[encoder] if lr is None else float(lr)
 
     global_state = initial_state(encoder, method, init_ckpt)
     mb = state_bytes(global_state) / 2**20
@@ -348,6 +365,8 @@ def main() -> None:
     ap.add_argument("--spec", required=True, help="<modo>:<datasets>:<contagens>")
     ap.add_argument("--encoder", required=True, choices=sorted(BUILD_MODEL))
     ap.add_argument("--rounds", type=int, default=100)
+    ap.add_argument("--lr", type=float, default=None,
+                    help="LR do cliente. Padrão: BEST_LR[encoder]. Usado pela busca S1 do eixo federado (docs/desenho_experimental.md).")
     ap.add_argument("--local-epochs", type=int, default=5)
     ap.add_argument("--seed", type=int, nargs="+", default=SEEDS)
     ap.add_argument("--budget", type=int, default=DEFAULT_BUDGET,
@@ -406,7 +425,7 @@ def main() -> None:
                   ckpt_dir=Path(args.ckpt_dir) / f"seed{s}" if args.ckpt_dir else None,
                   method=args.method, init_ckpt=init_ckpt, n_shots=n_shots,
                   pretrain_rounds=args.pretrain_rounds,
-                  pretrain_spec=args.pretrain_spec)
+                  pretrain_spec=args.pretrain_spec, lr=args.lr)
               for s in args.seed]
     new = pd.concat(frames, ignore_index=True)
     cache_path = Path(args.out) if args.out else CACHE

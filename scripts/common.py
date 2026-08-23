@@ -9,6 +9,7 @@ cabeça MLP, mesma parada antecipada e mesma taxa de aprendizado por encoder.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 from typing import Callable, Iterable, List, Optional, Union
@@ -33,7 +34,11 @@ from minerva.data.data_modules.har import MultiModalHARSeriesDataModule  # noqa:
 # Constantes do protocolo (pipeline supervisionado do benchmark DAGHAR)
 # ---------------------------------------------------------------------------
 DAGHAR_ROOT = PROJECT_ROOT / "datasets" / "DAGHAR" / "standardized_view"
-CHECKPOINTS_ROOT = PROJECT_ROOT / "checkpoints" / "supervised"
+# Sobrescrevível por env para que a grade das RQs (docs/desenho_experimental.md)
+# escreva em checkpoints/rqs/supervised/ sem tocar nos artefatos antigos.
+CHECKPOINTS_ROOT = Path(
+    os.environ.get("FEDHAR_SUP_CKPT_ROOT", PROJECT_ROOT / "checkpoints" / "supervised")
+)
 LOGS_ROOT = PROJECT_ROOT / "logs" / "supervised"
 
 DATASETS: List[str] = [
