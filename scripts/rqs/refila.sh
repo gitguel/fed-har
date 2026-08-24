@@ -8,7 +8,12 @@
 # driver disputariam o mesmo job (o skip é por parcial completo, não por job em
 # voo).
 #
-# Uso: scripts/rqs/refila.sh <federado|finetune> <seed> <gpus> [intervalo_s]
+# `seed` aceita LISTA entre aspas ("0 1 2"): os drivers tomam --seed com nargs="+",
+# entao um supervisor so cobre as tres seeds e rola de uma para a outra sozinho.
+# A tabela de LR e sempre da PRIMEIRA seed -- a busca S1 roda numa seed so e vale
+# para todas (premissa declarada, D9).
+#
+# Uso: scripts/rqs/refila.sh <federado|finetune> "<seeds>" <gpus> [intervalo_s]
 set -uo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -28,7 +33,7 @@ esac
 # regimes) presentes, entao regenerar no meio da busca e seguro.
 while true; do
   echo "=== $(date +%H:%M:%S) rodada do supervisor ($BLOCO seed $SEED) ==="
-  poetry run python scripts/rqs/lr_escolhida.py --seed "$SEED"
+  poetry run python scripts/rqs/lr_escolhida.py --seed "${SEED%% *}"
   poetry run python $DRIVER --gpus "$GPUS"
   echo "=== $(date +%H:%M:%S) aguardando ${INTERVALO}s por novas dependências ==="
   sleep "$INTERVALO"
