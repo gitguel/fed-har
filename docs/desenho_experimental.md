@@ -96,7 +96,7 @@ federações** × **4 regimes** `k ∈ {1,2,4,Full}` × **seeds**.
 | **RQ1 federado** | o braço federado, partição natural, R=150 | 240 |
 | **RQ2 pré-treino** | 2 métodos (TF-C, LFR) × 4 enc × 5 fed × seeds, R=100 | 120 |
 | **RQ2 fine-tuning** | 2 métodos × a grade da RQ1 federada | 480 |
-| **Busca S1 de LR** | 4 LRs × 4 enc × 5 fed × `{k=1, Full}`, 1 seed | 160 |
+| **Busca S1 de LR** | 6 LRs × 4 enc × 5 fed × `{k=1, Full}`, 1 seed | 240 |
 
 Com 4 seeds a grade principal vai a 1.440 runs. **A 1ª onda roda 3 seeds
 (0, 1, 2), uma seed por vez** — a seed 3 é incremento posterior, sem re-rodar nada
@@ -148,6 +148,32 @@ se pratica" × "federado como se pratica" —, **e a tabela leva junto a leitura
 orçamento pareado**, que sai de graça: o braço federado loga toda rodada, então
 basta ler a rodada em que o orçamento sequencial iguala o centralizado.
 
+### 7.1 Assimetria de *tuning* entre os braços (declarada em 2026-08-24)
+
+Além do orçamento de otimização, os dois braços **não recebem o mesmo cuidado de
+hiperparâmetro**:
+
+| Braço | Tratamento da LR |
+|---|---|
+| **Federado** | tunada por **encoder × federação × regime**, grade de 6 pontos, na validação deste repo (D9) |
+| **Centralizado** | **1e-4 fixo** — Tabela 12 do benchmark, calibrada no cenário *centralizado com rótulo cheio*; nunca revalidada aqui, em nenhum regime |
+
+**Decisão de escopo:** manter assim. Buscar LR também no centralizado abriria a
+regressão de hiperparâmetros (weight decay, schedule, …) que D6/D7 fecham de
+propósito.
+
+**O viés tem direção conhecida e é preciso dizê-la:** ele **subestima o custo da
+federação** — ou seja, empurra na direção que favorece a hipótese do trabalho. Como
+calibragem, na busca federada o `1e-4` é a **pior** das quatro LRs originais em
+11/20 células (`k=1`) e 12/20 (`Full`). Isso é evidência *federada* e não se
+transfere 1:1 para o centralizado — FedAvg com `E=5` muda a dinâmica de LR
+efetiva —, mas basta para afirmar que a LR do braço centralizado é **não
+validada**, não que seja ótima.
+
+Consequência prática para a leitura: o Δ federado − centralizado é um **limite
+inferior** do custo de federar. Um Δ favorável ao federado no `k=1` não separa
+"federar ajuda" de "o centralizado está mal tunado ali".
+
 **Ameaça à validade a declarar:** `R = 150` é **nosso** (veio da análise de curva de
 2026-07-28), não da literatura — FedEMA e FedST usam `R=100`, Saeed et al. 30–50. Sob
 o enquadramento "como se pratica", é o único knob sem padrão externo, e é justamente
@@ -163,6 +189,7 @@ o que fabrica a assimetria no `k=1`.
 | **D4** | **Seleção inalterada** (early stopping + `best.ckpt`) | o relato dos autores é específico do KuHar |
 | **D5** | **Batch 64** no pré-treino | não perde nenhum cliente e preserva os negativos da NT-Xent (`2×batch`) |
 | **D6** | Busca federada **S1**: só a LR, `E=5` fixo | `E=5` vira **premissa declarada** com quatro citações (FedSC, FedEMA, Saeed et al., FedST), não resultado medido |
+| **D9** *(2026-08-24)* | LR **por regime**, não por célula: `k=1` e `Full` decididos em separado; `k=2`/`k=4` **herdam a do `k=1`**. Grade estendida a 6 pontos (`1e-4 … 3e-2`) | dos 20 pares (encoder, federação), só **3 concordam** sobre a melhor LR entre os dois regimes; colapsar num valor só custava **1,08 pp** no `Full` — do tamanho do efeito que a RQ1 mede. A extensão da grade rendeu **+0,59 pp** médio (máx +5,13). Detalhe e tabela de regret em `scripts/rqs/lr_escolhida.py` |
 | **D7** | **Sem** busca de hiperparâmetros de SSL | é o `✗` da anotação; herdados dos papers e já auditados em [`metodo_e_auditoria.md`](metodo_e_auditoria.md) |
 | **D8** | Orçamento de otimização **declarado**, com leitura pareada junto | §7 |
 

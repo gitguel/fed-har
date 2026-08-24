@@ -274,7 +274,7 @@ protocolo. Sempre filtrar `local_epochs == 5`.
 |---|---|---|
 | **otimizador** | **Adam**, sem weight decay, betas default | é o default do `SimpleSupervisedModel` do benchmark — auditado como ✅ em `metodo_e_auditoria.md` §2.4. O loop local é torch puro, mas equivale à classe |
 | **perda** | **CrossEntropy** | default da mesma classe do benchmark. Nenhum paper de FedSSL da nossa lista usa outra coisa no downstream de classificação |
-| **learning rate** | **1e-4** (todos os encoders) | `common.py:76` — `BEST_LR`. **É o melhor tunado**: Apêndice A / Tabela 12 do benchmark, e os overrides `full_finetune_lr4`/`freeze` confirmam 1e-4 nos dois protocolos |
+| **learning rate** | **1e-4** (todos os encoders) | `common.py:81` — `BEST_LR`. **Herdado, não revalidado aqui**: Apêndice A / Tabela 12 do benchmark, calibrado no cenário *centralizado com rótulo cheio*; os overrides `full_finetune_lr4`/`freeze` confirmam 1e-4 nos dois protocolos **do benchmark**. ⚠️ A busca S1 de 2026-08-24 (`results/rqs/busca_lr.csv`) mostra que, no federado, 1e-4 é a **pior** das 4 LRs originais em 11/20 células (`k=1`) e 12/20 (`Full`) — evidência federada, não transferível 1:1, mas suficiente para não chamar 1e-4 de "o melhor tunado". Ver `desenho_experimental.md` §7.1 |
 | **rodadas** | **150** | casa com o baseline supervisionado, para o eixo de comparação ser o mesmo |
 | **épocas locais** | **5** | consenso de 4 papers primários (FedEMA, FedST/FedOST, Saeed IoT-J'21). A ablação `k=1` foi **cortada em 2026-08-04** |
 | perda | CrossEntropy | — |
