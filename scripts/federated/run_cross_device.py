@@ -85,10 +85,14 @@ from federated.cross_device import DEFAULT_BUDGET, make_clients, parse_spec
 from pretrain_fed import fedavg, state_bytes
 
 CACHE = PROJECT_ROOT / "results" / "fed_cross_device.csv"
+# `lr` entrou em 2026-08-24: sem ela o parcial nao diz com que LR foi treinado, e
+# o skip do driver ("arquivo existe com linhas suficientes") aceitava como bom um
+# parcial de uma LR antiga depois que a busca S1 mudava a celula. Auditoria de
+# qual LR gerou qual numero passa a ser possivel direto do CSV.
 COLS = ["encoder", "spec", "budget", "seed", "local_epochs", "round", "target",
         "test_acc", "test_f1_macro", "val_acc", "val_f1_macro",
         "uplink_mb", "downlink_mb", "method", "n_shots", "pretrain_rounds",
-        "pretrain_spec"]
+        "pretrain_spec", "lr"]
 METHODS = ["none", "lfr", "tfc"]
 SHOT_LEVELS = [1, 2, 5, 10, FULL_SHOTS]
 
@@ -295,7 +299,7 @@ def run(spec: str, encoder: str, rounds: int, local_epochs: int, seed: int,
                          "downlink_mb": mb * len(clients),
                          "method": method, "n_shots": str(n_shots),
                          "pretrain_rounds": pretrain_rounds,
-                         "pretrain_spec": pretrain_spec})
+                         "pretrain_spec": pretrain_spec, "lr": lr})
 
         # Seleção do `best` na validação (média sobre os alvos do spec) — o teste
         # nunca entra na decisão, só no reporte.

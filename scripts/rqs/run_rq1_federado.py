@@ -17,7 +17,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # .../scripts
 
 from rqs.config import (BUDGET, CKPT, E_LOCAL, ENCODERS, FEDERACOES, FULL_SHOTS,
-                        K_LEVELS, LOGS, RESULTS, R_FT, SEEDS_RQ, spec, verifica_clientes)
+                        K_LEVELS, LOGS, RESULTS, R_FT, SEEDS_RQ, parcial_pronto,
+                        spec, verifica_clientes)
+from rqs.lr_escolhida import decididas, lr_de  # noqa: E402
 from gpu_pool import Job, detect_gpus, run_pool  # noqa: E402
 
 RUNNER = Path(__file__).resolve().parents[1] / "federated" / "run_cross_device.py"
@@ -30,9 +32,6 @@ def parcial(encoder, ds, k, seed) -> Path:
     return PARTS / f"{encoder}_{ds}_k{k}_seed{seed}.csv"
 
 
-def pronto(path: Path, linhas: int) -> bool:
-    import pandas as pd
-    return path.exists() and len(pd.read_csv(path).dropna(subset=["test_f1_macro"])) >= linhas
 
 
 def consolidar() -> None:
@@ -60,6 +59,8 @@ def main() -> None:
     ap.add_argument("--max-parallel", type=int, default=None)
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--consolidate", action="store_true")
+    ap.add_argument("--so-lr-decidida", action="store_true",
+                    help="Só enfileira células (encoder, federação) cuja LR a busca S1 já fechou.")
     args = ap.parse_args()
 
     if args.consolidate:
@@ -69,13 +70,21 @@ def main() -> None:
     PARTS.mkdir(parents=True, exist_ok=True)
     gpus = ([int(g) for g in args.gpus.split(",") if g.strip()] if args.gpus else detect_gpus()) or [0]
 
-    jobs, prontos = [], 0
+    jobs, prontos, adiadas = [], 0, []
+    fechadas = decididas()
     for e in args.encoder:
         for d in args.dataset:
+            if args.so_lr_decidida and (e, d) not in fechadas:
+                adiadas.append(f"{e}/{d}")
+                continue
             for k in args.k:
+                # LR POR REGIME (2026-08-24): k in {1,2,4} usa a do k=1, Full a
+                # dele. Colapsar num valor so custava 1,08 pp no Full -- do
+                # tamanho do efeito que a RQ1 mede. Ver lr_escolhida.py.
+                lr = lr_de(e, d, k)
                 for s in args.seed:
                     p = parcial(e, d, k, s)
-                    if not args.force and pronto(p, args.rounds):
+                    if not args.force and parcial_pronto(p, args.rounds, lr):
                         prontos += 1
                         continue
                     label = f"{e}_{d}_k{k}_seed{s}"
@@ -84,10 +93,12 @@ def main() -> None:
                         "--spec", spec(d), "--encoder", e,
                         "--rounds", str(args.rounds), "--local-epochs", str(E_LOCAL),
                         "--seed", str(s), "--budget", str(BUDGET), "--shots", str(k),
-                        "--out", str(p),
+                        "--lr", str(lr), "--out", str(p),
                         "--ckpt-dir", str(CKPT / "fed" / e / d / f"k{k}"),
                     ], LOGS / "rq1_federado" / f"{label}.log"))
 
+    if adiadas:
+        print(f"[RQ1-F] {len(adiadas)} células adiadas (LR ainda não decidida): {adiadas}", flush=True)
     print(f"[RQ1-F] {len(jobs)} jobs ({prontos} prontos) | GPUs={gpus}", flush=True)
     falhas = run_pool(jobs, gpus, args.max_parallel or len(gpus))
     if falhas:

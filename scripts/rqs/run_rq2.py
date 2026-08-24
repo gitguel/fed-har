@@ -24,7 +24,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # .../scripts
 
 from rqs.config import (BUDGET, CKPT, E_LOCAL, ENCODERS, FEDERACOES, K_LEVELS,
                         LOCAL_EPOCHS_PRE, LOGS, METHODS, RESULTS, R_FT, R_PRE,
-                        SEEDS_RQ, spec, verifica_clientes)
+                        SEEDS_RQ, parcial_pronto, spec, verifica_clientes)
+from rqs.lr_escolhida import decididas, lr_de  # noqa: E402
 from gpu_pool import Job, detect_gpus, run_pool  # noqa: E402
 
 SCRIPTS = Path(__file__).resolve().parents[1]
@@ -46,9 +47,6 @@ def parcial(method, encoder, ds, k, seed) -> Path:
     return PARTS / f"{method}_{encoder}_{ds}_k{k}_seed{seed}.csv"
 
 
-def pronto(path: Path, linhas: int) -> bool:
-    import pandas as pd
-    return path.exists() and len(pd.read_csv(path).dropna(subset=["test_f1_macro"])) >= linhas
 
 
 def consolidar() -> None:
@@ -78,6 +76,8 @@ def main() -> None:
     ap.add_argument("--ft-rounds", type=int, default=R_FT)
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--consolidate", action="store_true")
+    ap.add_argument("--so-lr-decidida", action="store_true",
+                    help="Fase finetune: só células (encoder, federação) cuja LR a busca S1 já fechou.")
     args = ap.parse_args()
 
     if args.consolidate:
@@ -106,10 +106,14 @@ def main() -> None:
                         ], LOGS / "rq2_pretrain" / f"{label}.log"))
     else:
         PARTS.mkdir(parents=True, exist_ok=True)
-        faltando = []
+        faltando, adiadas = [], []
+        fechadas = decididas()
         for m in args.method:
             for e in args.encoder:
                 for d in args.dataset:
+                    if args.so_lr_decidida and (e, d) not in fechadas:
+                        adiadas.append(f"{e}/{d}")
+                        continue
                     for s in args.seed:
                         bb = backbone(m, e, d, s)
                         if not bb.exists():
@@ -117,7 +121,7 @@ def main() -> None:
                             continue
                         for k in args.k:
                             p = parcial(m, e, d, k, s)
-                            if not args.force and pronto(p, args.ft_rounds):
+                            if not args.force and parcial_pronto(p, args.ft_rounds, lr_de(e, d, k)):
                                 prontos += 1
                                 continue
                             label = f"ft_{m}_{e}_{d}_k{k}_seed{s}"
@@ -127,11 +131,14 @@ def main() -> None:
                                 "--rounds", str(args.ft_rounds), "--local-epochs", str(E_LOCAL),
                                 "--seed", str(s), "--budget", str(BUDGET),
                                 "--shots", str(k), "--method", m,
-                                "--init-ckpt", str(bb),
+                                # LR por regime: k in {1,2,4} herda a do k=1.
+                                "--lr", str(lr_de(e, d, k)), "--init-ckpt", str(bb),
                                 "--pretrain-rounds", str(args.pre_rounds),
                                 "--out", str(p),
                                 "--ckpt-dir", str(CKPT / "rq2" / m / e / d / f"k{k}"),
                             ], LOGS / "rq2_finetune" / f"{label}.log"))
+        if adiadas:
+            print(f"[RQ2] {len(set(adiadas))} células adiadas (LR não decidida): {sorted(set(adiadas))}", flush=True)
         if faltando:
             print(f"[RQ2] ATENÇÃO: {len(faltando)} backbones ausentes — rode a fase "
                   f"pretrain antes. Ex.: {faltando[:3]}", flush=True)

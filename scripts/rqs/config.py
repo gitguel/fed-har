@@ -44,7 +44,12 @@ E_LOCAL = 5                           # épocas EFETIVAS de backbone por rodada 
 LOCAL_EPOCHS_PRE = {"tfc": E_LOCAL, "lfr": 6 * E_LOCAL}   # LFR alterna 1:5
 BUDGET = 0                            # D3: partição natural
 MAX_EPOCHS_CENTR = 100                # D4: protocolo do benchmark, com early stopping
-LR_GRID = [1e-4, 3e-4, 1e-3, 3e-3]    # D6: busca S1 (só LR, E=5 fixo)
+# D6: busca S1 (só LR, E=5 fixo). Estendida em 2026-08-24: com a grade original
+# de 4 pontos, 11 das 20 células escolhiam o TETO (3e-3) no regime k=full e a
+# curva de val_acc ainda subia no último ponto (até +3,5 pp de 1e-3 para 3e-3 em
+# cnnpff/RealWorld_thigh e tstcc/MotionSense). Grade truncada à direita vira LR
+# sub-ótima travada em toda a RQ1, então o teto subiu para 3e-2.
+LR_GRID = [1e-4, 3e-4, 1e-3, 3e-3, 1e-2, 3e-2]
 
 # --- Saídas ----------------------------------------------------------------
 RESULTS = PROJECT_ROOT / "results" / "rqs"
@@ -60,6 +65,32 @@ def spec(dataset: str) -> str:
 def shots_centralizado(dataset: str, k):
     """Regime centralizado pareado com `k` por cliente: `k × n_clientes`."""
     return FULL_SHOTS if k == FULL_SHOTS else k * FEDERACOES[dataset]
+
+
+def parcial_pronto(path, linhas: int, lr: float | None = None) -> bool:
+    """Um parcial conta como pronto? Completo E treinado com a LR vigente.
+
+    O teste de LR entrou em 2026-08-24 (D9). Antes, o skip dos drivers olhava so
+    a contagem de linhas, entao um parcial de uma LR antiga sobrevivia a uma
+    mudanca da busca S1 e a grade ficava com LRs misturadas, em silencio -- na
+    virada para LR por regime, 9 dos 22 parciais federados completos estavam
+    divergentes, um deles 10x fora. Parcial sem a coluna `lr` (anterior a essa
+    data) e tratado como desconhecido, logo refeito.
+
+    Vive aqui, e nao em cada driver, porque duas copias de uma checagem sutil
+    divergem: e exatamente o bug que ela existe para evitar.
+    """
+    import pandas as pd
+    if not path.exists():
+        return False
+    df = pd.read_csv(path).dropna(subset=["test_f1_macro"])
+    if len(df) < linhas:
+        return False
+    if lr is None:
+        return True
+    if "lr" not in df.columns or df["lr"].isna().all():
+        return False
+    return bool((df["lr"].astype(float) - float(lr)).abs().max() < 1e-12)
 
 
 def verifica_clientes() -> None:
