@@ -92,7 +92,7 @@ CACHE = PROJECT_ROOT / "results" / "fed_cross_device.csv"
 COLS = ["encoder", "spec", "budget", "seed", "local_epochs", "round", "target",
         "test_acc", "test_f1_macro", "val_acc", "val_f1_macro",
         "uplink_mb", "downlink_mb", "method", "n_shots", "pretrain_rounds",
-        "pretrain_spec", "lr"]
+        "pretrain_spec", "lr", "val_loss"]
 METHODS = ["none", "lfr", "tfc"]
 SHOT_LEVELS = [1, 2, 5, 10, FULL_SHOTS]
 
@@ -247,9 +247,29 @@ def _eval_all(model: torch.nn.Module, targets: list[str]) -> list[tuple[str, flo
     return [(t, *evaluate(model, test_loader(t))) for t in targets]
 
 
-def _eval_val(model: torch.nn.Module, targets: list[str]) -> list[tuple[str, float, float]]:
+def _val_loss(model: torch.nn.Module, loader) -> float:
+    """CrossEntropy media na validacao -- a MESMA metrica que o braco centralizado
+    usa para early stopping (`common.MONITOR_METRIC`).
+
+    Entrou em 2026-08-24. Sem ela, o federado so tinha `val_acc` para selecionar
+    rodada, enquanto o centralizado seleciona epoca por `val_loss`: selecionar na
+    mesma familia da metrica reportada e mais otimista, e a assimetria contamina o
+    Delta da RQ1. Parciais anteriores a esta data nao tem a coluna.
+    """
+    import torch.nn.functional as F
+    tot, n = 0.0, 0
+    for x, y in loader:
+        logits = model(x.to(DEVICE))
+        y = y.to(DEVICE) if hasattr(y, "to") else torch.as_tensor(y, device=DEVICE)
+        tot += float(F.cross_entropy(logits, y.long(), reduction="sum"))
+        n += len(y)
+    return tot / max(n, 1)
+
+
+def _eval_val(model: torch.nn.Module, targets: list[str]) -> list[tuple[str, float, float, float]]:
     model = model.to(DEVICE).eval()
-    return [(t, *evaluate(model, val_loader(t))) for t in targets]
+    return [(t, *evaluate(model, val_loader(t)), _val_loss(model, val_loader(t)))
+            for t in targets]
 
 
 def run(spec: str, encoder: str, rounds: int, local_epochs: int, seed: int,
@@ -287,9 +307,9 @@ def run(spec: str, encoder: str, rounds: int, local_epochs: int, seed: int,
         global_state = fedavg(states, weights)
         model = _fresh(encoder, global_state, method)
         scores = _eval_all(model, targets)
-        vscores = {t: (a, f) for t, a, f in _eval_val(model, targets)}
+        vscores = {t: (a, f, l) for t, a, f, l in _eval_val(model, targets)}
         for tgt, acc, f1 in scores:
-            vacc, vf1 = vscores[tgt]
+            vacc, vf1, vloss = vscores[tgt]
             rows.append({"encoder": encoder, "spec": spec,
                          "budget": budget if budget is not None else "natural",
                          "seed": seed, "local_epochs": local_epochs, "round": r,
@@ -299,11 +319,12 @@ def run(spec: str, encoder: str, rounds: int, local_epochs: int, seed: int,
                          "downlink_mb": mb * len(clients),
                          "method": method, "n_shots": str(n_shots),
                          "pretrain_rounds": pretrain_rounds,
-                         "pretrain_spec": pretrain_spec, "lr": lr})
+                         "pretrain_spec": pretrain_spec, "lr": lr,
+                         "val_loss": vloss})
 
         # Seleção do `best` na validação (média sobre os alvos do spec) — o teste
         # nunca entra na decisão, só no reporte.
-        mean_val = sum(a for a, _ in vscores.values()) / len(vscores)
+        mean_val = sum(a for a, _, _ in vscores.values()) / len(vscores)
         if ckpt_dir is not None and mean_val > best_val:
             best_val, best_round = mean_val, r
             ckpt_dir.mkdir(parents=True, exist_ok=True)

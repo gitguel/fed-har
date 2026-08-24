@@ -34,11 +34,23 @@ from minerva.data.data_modules.har import MultiModalHARSeriesDataModule  # noqa:
 # Constantes do protocolo (pipeline supervisionado do benchmark DAGHAR)
 # ---------------------------------------------------------------------------
 DAGHAR_ROOT = PROJECT_ROOT / "datasets" / "DAGHAR" / "standardized_view"
-# Sobrescrevível por env para que a grade das RQs (docs/desenho_experimental.md)
-# escreva em checkpoints/rqs/supervised/ sem tocar nos artefatos antigos.
-CHECKPOINTS_ROOT = Path(
-    os.environ.get("FEDHAR_SUP_CKPT_ROOT", PROJECT_ROOT / "checkpoints" / "supervised")
-)
+_SUP_CKPT_DEFAULT = PROJECT_ROOT / "checkpoints" / "supervised"
+
+
+def checkpoints_root() -> Path:
+    """Raiz dos checkpoints supervisionados, resolvida NA HORA DA CHAMADA.
+
+    Sobrescrevível por `FEDHAR_SUP_CKPT_ROOT` para que a grade das RQs
+    (docs/desenho_experimental.md) escreva em `checkpoints/rqs/supervised/` sem
+    tocar nos artefatos antigos.
+
+    Por que funcao e nao constante: `rqs/config.py` seta a env com `setdefault`,
+    entao quem importasse `common` ANTES de `rqs.config` congelava a raiz antiga
+    e passava a procurar checkpoint no lugar errado -- em silencio, sem erro. Um
+    driver nessa ordem concluiria que a grade nao existe e retreinaria tudo.
+    Resolvendo a cada chamada, a ordem de import deixa de importar.
+    """
+    return Path(os.environ.get("FEDHAR_SUP_CKPT_ROOT", _SUP_CKPT_DEFAULT))
 LOGS_ROOT = PROJECT_ROOT / "logs" / "supervised"
 
 DATASETS: List[str] = [
@@ -244,7 +256,7 @@ def supervised_ckpt_dir(encoder: str, dataset: str, seed: int, n_shots: Union[in
     preservar os 84 checkpoints já existentes; os regimes few-shot ficam num
     subdiretório ``shots<K>``.
     """
-    base = CHECKPOINTS_ROOT / encoder / dataset / f"seed{seed}"
+    base = checkpoints_root() / encoder / dataset / f"seed{seed}"
     return base if n_shots == FULL_SHOTS else base / f"shots{n_shots}"
 
 
@@ -257,6 +269,13 @@ def build_callbacks(run_dir: Path) -> List[Callback]:
     run_dir.mkdir(parents=True, exist_ok=True)
     first_ckpt = FirstEpochCheckpoint(dirpath=run_dir, filename="first")
     # ModelCheckpoint com save_last=True escreve tanto `best.ckpt` quanto `last.ckpt`.
+    #
+    # `enable_version_counter=False` (2026-08-24): por padrao o Lightning NAO
+    # sobrescreve -- se `best.ckpt` ja existe, ele grava `best-v1.ckpt`. Como a
+    # avaliacao le `best.ckpt`, um re-treino com `--force` queimava GPU e o
+    # resultado era descartado em silencio: o numero reportado continuava o da
+    # corrida velha. Foi assim que 3 celulas com corridas patologicas
+    # sobreviveram a uma tentativa de refazer.
     best_and_last = ModelCheckpoint(
         dirpath=str(run_dir),
         filename="best",
@@ -265,6 +284,7 @@ def build_callbacks(run_dir: Path) -> List[Callback]:
         save_top_k=1,
         save_last=True,
         auto_insert_metric_name=False,
+        enable_version_counter=False,
     )
     early_stop = EarlyStopping(
         monitor=MONITOR_METRIC,
@@ -416,3 +436,14 @@ def normalize_shots(values: Iterable[Union[int, str]]) -> List[Union[int, str]]:
         v = str(v).lower()
         out.append(FULL_SHOTS if v == FULL_SHOTS else int(v))
     return out
+
+
+def __getattr__(name):
+    """Mantem `CHECKPOINTS_ROOT` acessivel (PEP 562), resolvido na hora do acesso.
+
+    Legado: codigo novo deve chamar `checkpoints_root()`. Este atalho existe para
+    nao quebrar os notebooks antigos, que leem a grade supervisionada original.
+    """
+    if name == "CHECKPOINTS_ROOT":
+        return checkpoints_root()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
