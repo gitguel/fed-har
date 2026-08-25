@@ -1,0 +1,21 @@
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Técnica / encoder} & \textbf{1} & \textbf{2} & \textbf{5} & \textbf{10} & \textbf{todos} \\
+\midrule
+\textbf{FedAvg supervisionado} &  &  &  &  &  \\
+\quad ResNet-SE-5 & \underline{\textbf{68.9}} & \underline{\textbf{69.9}} & 70.8 & 69.6 & 70.4 \\
+\quad CNN-PFF & 60.5 & 67.2 & \underline{\textbf{72.8}} & \underline{\textbf{74.8}} & 75.2 \\
+\quad BiGRU & 45.2 & 50.9 & 55.9 & 57.5 & 66.3 \\
+\quad TS-TCC & 59.2 & 65.1 & 69.9 & 72.3 & \underline{\textbf{75.8}} \\
+\textbf{LFR federado} &  &  &  &  &  \\
+\quad ResNet-SE-5 & \underline{\textbf{73.3}} & \underline{\textbf{73.6}} & 72.2 & 72.9 & 71.8 \\
+\quad CNN-PFF & 59.9 & 67.0 & 73.2 & 75.1 & 75.0 \\
+\quad BiGRU & 51.2 & 58.1 & 59.6 & 60.8 & 67.6 \\
+\quad TS-TCC & 61.2 & 67.8 & \underline{\textbf{73.5}} & \underline{\textbf{75.4}} & \underline{\textbf{78.0}} \\
+\textbf{TF-C federado} &  &  &  &  &  \\
+\quad ResNet-SE-5 & 67.5 & 69.6 & 71.6 & 74.0 & 72.9 \\
+\quad CNN-PFF & 65.9 & 73.0 & 76.3 & 78.0 & 79.3 \\
+\quad BiGRU & \underline{\textbf{68.8}} & \underline{\textbf{74.4}} & \underline{\textbf{77.3}} & \underline{\textbf{79.6}} & \underline{\textbf{80.8}} \\
+\quad TS-TCC & 58.9 & 64.4 & 68.2 & 70.1 & 72.8 \\
+\bottomrule
+\end{tabular}

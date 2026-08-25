@@ -1,0 +1,28 @@
+\documentclass[border=8pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{booktabs}
+\usepackage{newtxtext,newtxmath}
+\newsavebox{\tabbox}
+\begin{document}
+\small
+\savebox{\tabbox}{%
+\begin{tabular}{ll}
+\toprule
+\textbf{Parâmetro} & \textbf{Valor} \\
+\midrule
+Agregação & FedAvg ponderado por $n_k$ \\
+Cliente & 1 usuário real \\
+Orçamento por cliente & 192 janelas \\
+Épocas locais & E = 5 \\
+Rodadas de fine-tuning & R = 150 \\
+Rodadas de pré-treino SSL & 100 \\
+Seeds & 4 (0--3) \\
+\bottomrule
+\end{tabular}
+}%
+\begin{minipage}{\wd\tabbox}
+{\bfseries Configuração da federação cross-device}\par\vspace{4pt}
+\usebox{\tabbox}
+\end{minipage}
+\end{document}

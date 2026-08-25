@@ -1,0 +1,38 @@
+\documentclass[border=8pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{booktabs}
+\usepackage{newtxtext,newtxmath}
+\newsavebox{\tabbox}
+\begin{document}
+\small
+\savebox{\tabbox}{%
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Encoder / técnica} & \textbf{MS10} & \textbf{RW10} & \textbf{5+5} & \textbf{10+10} \\
+\midrule
+\textbf{ResNet-SE-5} &  &  &  &  \\
+\quad FedAvg supervisionado & 83.1 & 63.4 & 64.2 & 71.0 \\
+\quad LFR federado & \underline{\textbf{83.6}} & 60.6 & \underline{\textbf{68.7}} & 74.5 \\
+\quad TF-C federado & 79.1 & \underline{\textbf{66.9}} & 68.5 & \underline{\textbf{77.1}} \\
+\textbf{CNN-PFF} &  &  &  &  \\
+\quad FedAvg supervisionado & 83.8 & \underline{\textbf{69.5}} & 70.9 & 76.5 \\
+\quad LFR federado & 84.2 & 69.4 & 70.3 & 76.3 \\
+\quad TF-C federado & \underline{\textbf{90.0}} & 68.4 & \underline{\textbf{76.1}} & \underline{\textbf{82.5}} \\
+\textbf{BiGRU} &  &  &  &  \\
+\quad FedAvg supervisionado & 73.6 & 65.1 & 61.4 & 65.2 \\
+\quad LFR federado & 76.8 & 66.1 & 60.7 & 66.8 \\
+\quad TF-C federado & \underline{\textbf{89.2}} & \underline{\textbf{73.9}} & \underline{\textbf{76.9}} & \underline{\textbf{83.3}} \\
+\textbf{TS-TCC} &  &  &  &  \\
+\quad FedAvg supervisionado & 84.5 & \underline{\textbf{70.6}} & 73.2 & 74.8 \\
+\quad LFR federado & 88.0 & 66.4 & \underline{\textbf{77.3}} & \underline{\textbf{80.2}} \\
+\quad TF-C federado & \underline{\textbf{88.3}} & 66.8 & 66.9 & 69.3 \\
+\bottomrule
+\end{tabular}
+}%
+\begin{minipage}{\wd\tabbox}
+{\bfseries Cross-device: acurácia (\%) por encoder, federação e técnica --- rótulo cheio}\par\vspace{4pt}
+\usebox{\tabbox}
+\par\vspace{3pt}{\footnotesize Média de 4 seeds, última rodada (R = 150). O regime `todos' do supervisionado vem de fed\_cross\_device.csv (local\_epochs = 5). Melhor técnica de cada coluna, dentro de cada encoder, em negrito sublinhado.}
+\end{minipage}
+\end{document}
